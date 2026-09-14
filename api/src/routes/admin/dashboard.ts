@@ -77,8 +77,8 @@ export default async function dashboard(app: FastifyInstance) {
       prisma.room.count(),
       prisma.user.count({ where: { role: "PARENT", isActive: true } }),
       prisma.user.count({ where: { role: "PARENT", isActive: true, telegramLink: { isActive: true } } }),
-      prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
-      prisma.user.count({ where: { role: "STUDENT", isActive: true, telegramLink: { isActive: true } } }),
+      prisma.user.count({ where: { role: "STUDENT", isActive: true, studentProfile: { status: { not: "LEFT" } } } }),
+      prisma.user.count({ where: { role: "STUDENT", isActive: true, studentProfile: { status: { not: "LEFT" } }, telegramLink: { isActive: true } } }),
       prisma.attendance.groupBy({ by: ["studentId", "status"], where: { lesson: { startsAt: { gte: monthStart, lte: now } } }, _count: { _all: true } }),
       prisma.submission.findMany({
         where: { status: "SUBMITTED", submittedAt: { lt: new Date(now.getTime() - REVIEW_SLA_H * 3600_000) } },

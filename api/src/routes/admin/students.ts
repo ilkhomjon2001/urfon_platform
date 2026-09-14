@@ -46,7 +46,8 @@ const optText = (max: number) =>
     .transform((v) => (v ? v : null));
 
 const listQuery = pageQuery.extend({
-  status: zStatus.optional(),
+  // ko'rsatilmasa — ketganlardan tashqari hammasi (KPI "Jami" bilan bir xil); ALL — ketganlar bilan birga
+  status: z.union([zStatus, z.literal("ALL")]).optional(),
   groupId: z.string().max(40).optional(),
   levelId: z.string().max(40).optional(),
   payment: z.enum(["PAID", "PENDING", "OVERDUE", "NONE"]).optional(),
@@ -74,10 +75,66 @@ function searchWhere(raw: string): Prisma.UserWhereInput {
   return { OR: or };
 }
 
+// ─────────── Dublikat nazorati ───────────
+
+const APOSTROPHES = /[ʻʼ'`‘’]/g;
+/** Ism kaliti: harf kattaligi, apostrof turi (oʻ/o'), ortiqcha bo'shliq va so'zlar tartibi farq qilmaydi. */
+function nameKey(s: string) {
+  return s.toLowerCase().replace(APOSTROPHES, "'").split(/\s+/).filter(Boolean).sort().join(" ");
+}
+
+/**
+ * Yangi o'quvchiga o'xshash yozuvlar: ism kaliti bir xil yoki o'quvchi telefoni bir xil.
+ * blocking — ism bir xil + umumiy ota-ona + o'quvchi hali o'qiyapti (aniq dublikat, qo'shib bo'lmaydi).
+ */
+async function findDuplicates(db: Tx | typeof prisma, input: { fullName: string; phone?: string | null; parentPhones: string[] }) {
+  const key = nameKey(input.fullName);
+  // SQL'da oldindan saralash: ismdagi eng uzun bo'lak (apostrofsiz) uchrashi kerak, aniq solishtirish — JS'da
+  const longest = key.split(/[\s']+/).sort((a, b) => b.length - a.length)[0] ?? "";
+  const or: Prisma.UserWhereInput[] = [];
+  if (longest.length >= 2) or.push({ fullName: { contains: longest, mode: "insensitive" } });
+  if (input.phone) or.push({ phone: input.phone });
+  if (!or.length) return [];
+  const rows = await db.user.findMany({
+    where: { role: "STUDENT", studentProfile: { isNot: null }, OR: or },
+    select: {
+      id: true,
+      fullName: true,
+      phone: true,
+      studentProfile: { select: { code: true, status: true } },
+      parents: { orderBy: { createdAt: "asc" }, select: { relation: true, parent: { select: { fullName: true, phone: true, login: true } } } },
+    },
+    take: 200,
+  });
+  return rows.flatMap((r) => {
+    const sameName = nameKey(r.fullName) === key;
+    const samePhone = !!input.phone && r.phone === input.phone;
+    if (!sameName && !samePhone) return [];
+    const sharedParent = r.parents.some(
+      (p) => input.parentPhones.includes(p.parent.login) || (!!p.parent.phone && input.parentPhones.includes(p.parent.phone)),
+    );
+    const status = r.studentProfile!.status;
+    return [
+      {
+        id: r.id,
+        code: r.studentProfile!.code,
+        fullName: r.fullName,
+        status,
+        parents: r.parents.map((p) => ({ fullName: p.parent.fullName, phone: p.parent.phone, relation: p.relation })),
+        sameName,
+        samePhone,
+        sharedParent,
+        blocking: sameName && sharedParent && (status === "ACTIVE" || status === "ACADEMIC_LEAVE"),
+      },
+    ];
+  });
+}
+
 function listWhere(q: ListQuery): Prisma.UserWhereInput {
   const and: Prisma.UserWhereInput[] = [{ role: "STUDENT", studentProfile: { isNot: null } }];
   if (q.q) and.push(searchWhere(q.q));
-  if (q.status) and.push({ studentProfile: { status: q.status } });
+  if (!q.status) and.push({ studentProfile: { status: { not: "LEFT" } } });
+  else if (q.status !== "ALL") and.push({ studentProfile: { status: q.status } });
   if (q.groupId) and.push({ enrollments: { some: { groupId: q.groupId, status: ACTIVE_ENR } } });
   if (q.levelId) and.push({ enrollments: { some: { status: ACTIVE_ENR, group: { levelId: q.levelId } } } });
   if (q.telegram === "linked") and.push({ parents: { some: { parent: { telegramLink: { isActive: true } } } } });
@@ -264,6 +321,8 @@ const createBody = z.object({
   parents: z.array(parentInput).min(1, "Kamida bitta ota-ona kiriting").max(3),
   groupId: z.string().max(40).optional().nullable(),
   enrollmentStatus: zEnrollStatus.optional(),
+  // o'xshash (lekin aniq dublikat emas) o'quvchi topilganda admin tasdiqlagan
+  allowDuplicate: z.boolean().optional(),
 });
 
 const updateBody = z
@@ -313,6 +372,20 @@ export default async function students(app: FastifyInstance) {
       })),
       levels: levels.map((l) => ({ ...l, label: levelName(l) ?? l.name })),
     };
+  });
+
+  // ── Dublikat tekshiruvi (forma to'ldirilayotganda; POST /students ham shu qoidani majburiy qo'llaydi) ──
+  app.get("/students/duplicates", async (req) => {
+    const q = parse(
+      z.object({
+        fullName: z.string().trim().min(3).max(120),
+        phone: zPhoneLoose.optional(),
+        parentPhones: z.string().max(200).optional(),
+      }),
+      req.query,
+    );
+    const parentPhones = parse(z.array(zPhoneLoose).max(3), (q.parentPhones ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+    return { items: await findDuplicates(prisma, { fullName: q.fullName, phone: q.phone, parentPhones }) };
   });
 
   // ── Sarlavha statistikasi ──
@@ -589,6 +662,16 @@ export default async function students(app: FastifyInstance) {
 
     const result = await prisma.$transaction(async (tx) => {
       const code = await nextStudentCode(tx);
+      // Dublikat nazorati — nextStudentCode qulfi ostida, parallel so'rovlar ham ikki nusxa yarata olmaydi
+      const dups = await findDuplicates(tx, { fullName: body.fullName, phone: body.phone, parentPhones: phones });
+      const exact = dups.find((d) => d.blocking);
+      if (exact) throw conflict(`${exact.fullName} (#${exact.code}) shu ota-ona bilan allaqachon roʻyxatda — qayta qoʻshilmaydi`, "DUPLICATE_STUDENT");
+      if (dups.length && !body.allowDuplicate) {
+        throw conflict(
+          `Oʻxshash oʻquvchi bor: ${dups.map((d) => `${d.fullName} (#${d.code})`).join(", ")}. Boshqa oʻquvchi boʻlsa, tasdiqlab qayta yuboring`,
+          "POSSIBLE_DUPLICATE",
+        );
+      }
       const student = await tx.user.create({
         data: {
           login: code,
@@ -651,6 +734,7 @@ export default async function students(app: FastifyInstance) {
         after: {
           studentId: student.id, code, fullName: student.fullName, phone: student.phone, birthDate: body.birthDate ?? null,
           goal: body.goal, turnstileId: body.turnstileId, parents: parentsAudit, groupId: body.groupId ?? null,
+          ...(dups.length ? { confirmedDuplicateOf: dups.map((d) => d.code) } : {}),
         },
       });
 

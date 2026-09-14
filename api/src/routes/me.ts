@@ -24,7 +24,7 @@ export default async function meRoutes(app: FastifyInstance) {
       const [groups, teachers, students, overdue] = await Promise.all([
         prisma.group.count({ where: { status: { not: "FINISHED" } } }),
         prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
-        prisma.studentProfile.count(),
+        prisma.studentProfile.count({ where: { status: { not: "LEFT" } } }),
         prisma.payment.count({ where: { status: "OVERDUE" } }),
       ]);
       return { groups, teachers, students, payments: overdue ? `${overdue} kechikkan` : 0 };

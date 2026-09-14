@@ -1,11 +1,12 @@
 // Oʻquvchi formalari: yaratish (ota-ona bilan), tahrirlash, holat, guruhga yozish, xabar, ota-ona bogʻlash.
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Alert, Badge, Button, Checkbox, Dialog, Field, Icon, IconButton, Input, Select, Textarea } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { fmtPhone, todayYmd } from "@/lib/format";
 import { useDebouncedValue } from "@/lib/hooks";
 import { useApiMutation, useApiQuery } from "@/lib/query";
-import { STUDENT_STATUS_LONG, useFormOptions, type GroupOption } from "./shared";
+import { STUDENT_STATUS_LONG, StudentStatusBadge, useFormOptions, type GroupOption } from "./shared";
 import type { CreateStudentResult, Credential, ParentLookup, Relation, StudentDetail, StudentStatus } from "./types";
 
 export const STUDENT_KEYS = [["admin", "students"], ["admin", "parents"], ["admin", "b", "options"], ["admin", "audit"], ["me", "nav-badges"]];
@@ -158,6 +159,34 @@ function ParentFields({
   );
 }
 
+// ─────────── Dublikat tekshiruvi (GET /admin/students/duplicates) ───────────
+
+interface DuplicateMatch {
+  id: string;
+  code: string;
+  fullName: string;
+  status: StudentStatus;
+  parents: { fullName: string; phone: string | null; relation: string }[];
+  sameName: boolean;
+  samePhone: boolean;
+  sharedParent: boolean;
+  /** ism bir xil + umumiy ota-ona + hali oʻqiyapti — server qoʻshishni rad etadi */
+  blocking: boolean;
+}
+
+/** Forma toʻldirilayotganda oʻxshash oʻquvchilarni topadi (server POST da ham xuddi shu qoidani qoʻllaydi). */
+function useDuplicateCheck(fullName: string, phone: string | null, parentPhones: string[]) {
+  const name = useDebouncedValue(fullName.trim(), 400);
+  const phones = useDebouncedValue(parentPhones.join(","), 400);
+  const enabled = name.length >= 3;
+  const q = useApiQuery<{ items: DuplicateMatch[] }>(
+    ["admin", "students", "duplicates", name, phone, phones],
+    enabled ? "/admin/students/duplicates" : null,
+    { params: { fullName: name, phone: phone ?? undefined, parentPhones: phones || undefined }, staleTime: 5_000 },
+  );
+  return { matches: enabled ? (q.data?.items ?? []) : [], recheck: q.refetch };
+}
+
 // ─────────── Yangi oʻquvchi ───────────
 
 let keySeq = 1;
@@ -177,6 +206,17 @@ export function CreateStudentDialog({
   const [parents, setParents] = useState<ParentDraft[]>([newParent()]);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [confirmDup, setConfirmDup] = useState(false);
+
+  const { matches, recheck } = useDuplicateCheck(
+    form.fullName,
+    normPhone(form.phone),
+    parents.map((p) => normPhone(p.phone)).filter((x): x is string => !!x),
+  );
+  const exact = matches.find((m) => m.blocking);
+  const dupKey = matches.map((m) => m.id).join(",");
+  // roʻyxat oʻzgarsa tasdiq qaytadan soʻraladi
+  useEffect(() => setConfirmDup(false), [dupKey]);
 
   useEffect(() => {
     if (open) {
@@ -185,6 +225,7 @@ export function CreateStudentDialog({
       setWaiting(false);
       setError(null);
       setTouched(false);
+      setConfirmDup(false);
     }
   }, [open]);
 
@@ -196,7 +237,10 @@ export function CreateStudentDialog({
       onOpenChange(false);
       onCreated(r);
     },
-    onError: (e) => setError(errMsg(e)),
+    onError: (e) => {
+      setError(errMsg(e));
+      if (e instanceof ApiError && (e.code === "DUPLICATE_STUDENT" || e.code === "POSSIBLE_DUPLICATE")) void recheck();
+    },
   });
 
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -209,6 +253,7 @@ export function CreateStudentDialog({
     setError(null);
     if (form.fullName.trim().length < 3 || phoneErr) return;
     if (parents.some((p) => !normPhone(p.phone))) return setError("Ota-ona telefon raqamini +998XXXXXXXXX koʻrinishida kiriting");
+    if (exact || (matches.length && !confirmDup)) return;
     create.mutate({
       fullName: form.fullName.trim(),
       phone: form.phone.trim() ? normPhone(form.phone) : undefined,
@@ -219,6 +264,7 @@ export function CreateStudentDialog({
       parents: parents.map((p) => ({ phone: normPhone(p.phone), fullName: p.fullName.trim() || undefined, relation: p.relation })),
       groupId: form.groupId || undefined,
       enrollmentStatus: waiting ? "WAITING" : undefined,
+      allowDuplicate: confirmDup || undefined,
     });
   };
 
@@ -234,8 +280,14 @@ export function CreateStudentDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
             Bekor qilish
           </Button>
-          <Button type="submit" form="create-student" icon="person_add" loading={create.isPending}>
-            Oʻquvchini qoʻshish
+          <Button
+            type="submit"
+            form="create-student"
+            icon="person_add"
+            loading={create.isPending}
+            disabled={!!exact || (matches.length > 0 && !confirmDup)}
+          >
+            {matches.length && confirmDup ? "Baribir qoʻshish" : "Oʻquvchini qoʻshish"}
           </Button>
         </>
       }
@@ -246,6 +298,35 @@ export function CreateStudentDialog({
           <Field label="Ism-familiya" required error={nameErr} className="sm:col-span-2">
             <Input autoFocus placeholder="Masalan: Sardor Aliyev" value={form.fullName} onChange={set("fullName")} />
           </Field>
+          {matches.length ? (
+            <Alert
+              tone={exact ? "danger" : "warning"}
+              title={exact ? "Bu oʻquvchi allaqachon roʻyxatda" : "Oʻxshash oʻquvchi topildi"}
+              className="sm:col-span-2"
+            >
+              <ul className="mt-1 flex flex-col gap-1.5">
+                {matches.map((m) => (
+                  <li key={m.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Link to={`/admin/oquvchilar?id=${m.id}`} className="font-semibold text-primary hover:underline">
+                      {m.fullName} #{m.code}
+                    </Link>
+                    <StudentStatusBadge status={m.status} />
+                    <span className="text-body-sm">
+                      {m.parents.length ? m.parents.map((p) => `${p.fullName} ${fmtPhone(p.phone)}`).join(", ") : "ota-ona bogʻlanmagan"}
+                      {m.samePhone && !m.sameName ? " · telefon raqami bir xil" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {exact ? (
+                <p className="mt-2 text-body-sm">Shu ota-ona bilan bir xil ismli oʻquvchini qayta qoʻshib boʻlmaydi. Kerak boʻlsa, mavjud profilni oching.</p>
+              ) : (
+                <div className="mt-3">
+                  <Checkbox checked={confirmDup} onChange={(e) => setConfirmDup(e.target.checked)} label="Bu boshqa oʻquvchi — baribir qoʻshilsin" />
+                </div>
+              )}
+            </Alert>
+          ) : null}
           <Field label="Tugʻilgan sana">
             <Input type="date" value={form.birthDate} onChange={set("birthDate")} max={todayYmd()} />
           </Field>

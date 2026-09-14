@@ -262,7 +262,7 @@ export default function AdminStudentsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs value={tab} onValueChange={setTab} variant="segmented" className="max-w-full">
             <TabsList>
-              <TabsTrigger value="all">Barchasi{st ? ` (${fmtNum(st.total + st.byStatus.LEFT)})` : ""}</TabsTrigger>
+              <TabsTrigger value="all">Barchasi{st ? ` (${fmtNum(st.total)})` : ""}</TabsTrigger>
               <TabsTrigger value="ACTIVE">Faol taʼlimda{st ? ` (${fmtNum(st.byStatus.ACTIVE)})` : ""}</TabsTrigger>
               <TabsTrigger value="ACADEMIC_LEAVE">Akademik taʼtilda{st ? ` (${fmtNum(st.byStatus.ACADEMIC_LEAVE)})` : ""}</TabsTrigger>
               <TabsTrigger value="GRADUATED">Bitirgan{st ? ` (${fmtNum(st.byStatus.GRADUATED)})` : ""}</TabsTrigger>
