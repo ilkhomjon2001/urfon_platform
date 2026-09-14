@@ -16,7 +16,8 @@
     "build": "npm run build -w api && npm run build -w web",
     "start": "npm run start -w api",
     "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
-    "check:uz": "node tools/check-uz.mjs"
+    "check:uz": "node tools/check-uz.mjs",
+    "icons": "node tools/icon-subset.mjs"
   },
   "allowScripts": {
     "@prisma/client@6.19.3": true,

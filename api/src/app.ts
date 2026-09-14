@@ -80,6 +80,7 @@ export async function buildApp() {
     await app.register(fastifyStatic, {
       root: webDist,
       wildcard: false,
+      cacheControl: false, // aks holda @fastify/static setHeaders'dagi Cache-Control'ni "max-age=0" bilan almashtiradi
       // /assets/* nomida hash bor — o'zgarmaydi; index.html va boshqalar qisqa keshda
       setHeaders: (res, filePath) => {
         res.setHeader(

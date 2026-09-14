@@ -1,6 +1,6 @@
 import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
-import "material-symbols/outlined.css";
+import "./icons.css"; // Material Symbols — faqat ishlatilgan ikonkalar (tools/icon-subset.mjs)
 import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
