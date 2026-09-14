@@ -80,7 +80,26 @@ TRUST_PROXY=false
 COMPOSE_PROFILES=
 ```
 
-`APP_ORIGIN` `http://` bilan boshlansa, Secure cookie va HSTS avtomatik oʻchadi, aks holda brauzer sessiyani saqlamaydi. Domen olingach, uni mavjud reverse proxy'ga (masalan, serverdagi boshqa Caddy) `127.0.0.1:4900` ga yoʻnaltiring, `APP_ORIGIN=https://domen` qiling va `docker compose up -d` ni bajaring.
+`APP_ORIGIN` `http://` bilan boshlansa, Secure cookie va HSTS avtomatik oʻchadi, aks holda brauzer sessiyani saqlamaydi.
+
+### 3b. Umumiy server + domen (serverdagi boshqa Caddy orqali)
+
+Serverdagi Caddy konteynerda ishlaydi (`coach-caddy-1`, tarmoq `coach_default`), shuning uchun `127.0.0.1` uning oʻzi. Hostdagi xizmatlarga u docker bridge gateway orqali murojaat qiladi: `172.18.0.1:<port>`. Serverdagi boshqa loyihalar ham shunday ulangan. Tartib:
+
+1. DNS: `@` va `app` uchun A yozuv → server IP. `nslookup app.domen 8.8.8.8` yangi IP ni koʻrsatguncha kuting. Aks holda Let's Encrypt urinishlari muvaffaqiyatsiz boʻlib, keyingi urinish kechikadi.
+2. [`shared-caddy-urfon.caddy`](shared-caddy-urfon.caddy) blokini `/opt/coach/deploy/Caddyfile` oxiriga qoʻshing (avval nusxa oling):
+   ```bash
+   docker exec coach-caddy-1 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+   docker exec coach-caddy-1 caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+   ```
+3. `https://app.domen/api/health` ishlagach, `.env` ni oʻzgartiring va `docker compose up -d` ni bajaring:
+   ```
+   APP_ORIGIN=https://app.domen
+   APP_BIND=172.18.0.1      # ilova faqat Caddy orqali ochiladi, :4900 internetga yopiladi
+   APP_PORT=4900
+   # TRUST_PROXY qatorini olib tashlang — standart qiymat xususiy tarmoqdagi proxy'ga ishonadi
+   ```
+   `APP_ORIGIN` `https://` bilan boshlangani uchun Secure cookie va HSTS oʻzi yoqiladi. Shu paytgacha kirilgan `http://IP:4900` sessiyalari bekor boʻladi, foydalanuvchilar yangi manzilda qayta kiradi.
 
 ## 4. Ishga tushirish
 

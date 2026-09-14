@@ -1,0 +1,39 @@
+# ─── URFON (2026-09-14) ──────────────────────────────────────────────────────
+# Umumiy server rejimi (README-DEPLOY §3a): 80/443 ni boshqa loyihaning Caddy'si (coach-caddy-1) egallagan.
+# Shu blok /opt/coach/deploy/Caddyfile oxiriga qo'shiladi, keyin:
+#   docker exec coach-caddy-1 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+#   docker exec coach-caddy-1 caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+#
+# Landing:   /opt/urfon (systemd urfon-landing, :4601)
+# Platforma: /opt/urfon-platforma (docker compose "urfon"), APP_BIND=172.18.0.1 APP_PORT=4900
+#            .env: APP_ORIGIN=https://app.urfon-edu.uz (Secure cookie va HSTS avtomatik yoqiladi)
+urfon-edu.uz {
+	encode zstd gzip
+
+	reverse_proxy 172.18.0.1:4601
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+www.urfon-edu.uz {
+	redir https://urfon-edu.uz{uri} permanent
+}
+
+app.urfon-edu.uz {
+	encode zstd gzip
+
+	# Fayl yuklash: MAX_UPLOAD_MB (25) × 5 ta fayl + multipart
+	request_body {
+		max_size 130MB
+	}
+
+	reverse_proxy 172.18.0.1:4900
+
+	log {
+		output stdout
+		format console
+	}
+}
