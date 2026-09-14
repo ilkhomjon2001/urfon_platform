@@ -16,7 +16,7 @@ export default async function payments(app: FastifyInstance) {
     const period = periodOf(now);
     const today = toDbDate();
 
-    const [rows, txs, balance] = await Promise.all([
+    const [rows, txs, balance, fees] = await Promise.all([
       prisma.payment.findMany({
         where: { studentId: child.id, status: { not: "CANCELLED" } },
         orderBy: [{ period: "desc" }, { dueDate: "desc" }],
@@ -39,7 +39,13 @@ export default async function payments(app: FastifyInstance) {
         },
       }),
       studentBalance(prisma, child.id),
+      // oylik toʻlov — faol oʻqiyotgan barcha guruhlar boʻyicha
+      prisma.groupStudent.findMany({
+        where: { studentId: child.id, status: "ACTIVE", group: { status: { not: "FINISHED" } } },
+        select: { group: { select: { name: true, monthlyFee: true } } },
+      }),
     ]);
+    const monthlyFees = fees.map((f) => ({ group: f.group.name, fee: f.group.monthlyFee }));
 
     const items = rows.map(({ allocations, ...p }) => {
       const status = p.status === "PENDING" && p.dueDate < today ? ("OVERDUE" as const) : p.status;
@@ -87,7 +93,8 @@ export default async function payments(app: FastifyInstance) {
           // eski (tushumsiz) toʻlangan hisoblar ham hisobga olinsin
           + items.filter((p) => p.status === "PAID" && !p.transactionId && p.period.startsWith(year)).reduce((s, p) => s + p.amount, 0),
         paidCount: valid.length + items.filter((p) => p.status === "PAID" && !p.transactionId).length,
-        monthlyFee: child.info.group?.monthlyFee ?? null,
+        monthlyFee: monthlyFees.length ? monthlyFees.reduce((s, f) => s + f.fee, 0) : (child.info.group?.monthlyFee ?? null),
+        monthlyFees,
       },
       items,
       transactions: txs.map((t) => ({

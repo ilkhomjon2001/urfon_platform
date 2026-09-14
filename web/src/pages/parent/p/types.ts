@@ -188,6 +188,8 @@ export interface PaymentRow {
   id: string;
   period: string;
   amount: number;
+  /** Shu hisobga tushgan pul (qisman toʻlov). PAID boʻlsa = amount. */
+  paidAmount?: number;
   status: PaymentStatus;
   dueDate: ISODate;
   paidAt?: ISODate | null;
@@ -196,6 +198,32 @@ export interface PaymentRow {
   note?: string | null;
   createdAt?: ISODate;
   group: { id?: string; code?: string; name: string } | null;
+}
+
+/** /parent/payments dagi oylik hisob: qisman toʻlov va qoldiq bilan. */
+export interface ChargeRow extends PaymentRow {
+  paidAmount: number;
+  /** amount − paidAmount */
+  outstanding: number;
+  /** Toʻliq yopilmagan, lekin pul tushgan */
+  partial: boolean;
+  /** Soʻnggi tushum (eski, tushumsiz toʻlangan hisoblarda null) */
+  transactionId: string | null;
+}
+
+/** Kassaga kelgan pul (tushum). Bekor qilingani `reversed` bilan qoladi (storno). */
+export interface PaymentTx {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  methodLabel: string;
+  paidAt: ISODate;
+  receiptNo: string;
+  note: string | null;
+  reversed: { at: ISODate; reason: string | null } | null;
+  allocations: { period: string; amount: number; group: string | null }[];
+  /** Hisoblarga taqsimlanmagan qism (avans) */
+  advance: number;
 }
 
 export interface DashboardData {
@@ -418,18 +446,32 @@ export interface HomeworkData {
 
 export interface PaymentsData {
   now: ISODate;
+  /** Joriy davr "YYYY-MM" */
   period: string;
+  /** Toʻlov muddati — har oyning shu sanasigacha */
+  dueDay: number;
   child: { id: string; fullName: string; code: string; group: { name: string; code: string; monthlyFee: number } | null };
-  current: PaymentRow | null;
+  current: ChargeRow | null;
   summary: {
+    /** Ochiq hisoblarning toʻlanmagan qismi */
     outstanding: number;
     outstandingCount: number;
+    /** Qarzdorlikning muddati oʻtgan qismi */
+    overdue: number;
     hasOverdue: boolean;
-    nextDue: PaymentRow | null;
+    advance: number;
+    /** advance − outstanding; manfiy — qarz */
+    balance: number;
+    nextDue: ChargeRow | null;
     paidThisYear: number;
     paidCount: number;
     monthlyFee: number | null;
+    /** faol guruhlar boʻyicha (monthlyFee — ularning yigʻindisi) */
+    monthlyFees?: { group: string; fee: number }[];
   };
-  items: PaymentRow[];
+  /** Oylik hisoblar (yangisi birinchi) */
+  items: ChargeRow[];
+  /** Tushumlar (yangisi birinchi), bekor qilinganlari ham */
+  transactions: PaymentTx[];
   branch: Branch | null;
 }

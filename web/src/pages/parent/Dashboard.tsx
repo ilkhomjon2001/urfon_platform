@@ -22,6 +22,8 @@ import {
   gradeLabel,
   gradeTone,
   relDayWord,
+  todayYmd,
+  toYmd,
 } from "@/lib/format";
 import { toastError } from "@/lib/query";
 import { settingsPath } from "@/lib/roles";
@@ -101,15 +103,20 @@ export default function ParentDashboard() {
 
 function PaymentBanner({ payment }: { payment: NonNullable<DashboardData["payment"]> }) {
   const p = payment.current;
-  const overdue = payment.hasOverdue;
+  // kron PENDING→OVERDUE ni kuniga bir marta qiladi — muddat oʻtganini sanadan ham tekshiramiz
+  const overdue = payment.hasOverdue || toYmd(p.dueDate) < todayYmd();
+  const paid = p.paidAmount ?? 0;
+  const left = p.amount - paid;
   return (
     <Alert
       tone={overdue ? "danger" : "warning"}
-      icon={PAY_META[p.status].icon}
+      icon={PAY_META[overdue ? "OVERDUE" : p.status].icon}
       title={
         overdue
-          ? `Toʻlov muddati oʻtgan: ${fmtMoney(payment.totalDue)}`
-          : `${fmtPeriod(p.period)} uchun toʻlov kutilmoqda: ${fmtMoney(p.amount)}`
+          ? `Toʻlov muddati oʻtgan · qarzdorlik: ${fmtMoney(payment.totalDue)}`
+          : payment.count > 1
+            ? `Toʻlov kutilmoqda: ${fmtMoney(payment.totalDue)}`
+            : `${fmtPeriod(p.period)} uchun toʻlov kutilmoqda: ${fmtMoney(left)}`
       }
       action={
         <Link to={`${PARENT_BASE}/tolovlar`} className={buttonVariants({ variant: overdue ? "danger" : "outline", size: "sm" })}>
@@ -117,7 +124,9 @@ function PaymentBanner({ payment }: { payment: NonNullable<DashboardData["paymen
         </Link>
       }
     >
-      {payment.count > 1 ? `${payment.count} ta toʻlanmagan oy. ` : ""}Toʻlov muddati: {fmtDate(p.dueDate)}
+      {payment.count > 1 ? `${payment.count} ta toʻlanmagan hisob. ` : ""}
+      {paid > 0 ? `${fmtPeriod(p.period)}: ${fmtMoney(paid)} toʻlangan, qoldiq ${fmtMoney(left)}. ` : ""}
+      Toʻlov muddati: {fmtDate(p.dueDate)}
       {p.group ? ` · ${p.group.name}` : ""}
     </Alert>
   );

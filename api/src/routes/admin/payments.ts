@@ -361,7 +361,8 @@ export default async function payments(app: FastifyInstance) {
       return {
         ...studentDto(s),
         charged: b?.charged ?? 0,
-        paid: b?.paid ?? 0,
+        // toʻlangan = hisoblarga yopilgan pul + avans (tushumsiz eski toʻlangan hisoblar ham kiradi)
+        paid: (b?.charged ?? 0) - outstanding + advance,
         outstanding,
         overdue: b?.overdue ?? 0,
         advance,

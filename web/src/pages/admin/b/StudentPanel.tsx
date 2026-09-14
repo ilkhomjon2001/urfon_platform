@@ -41,12 +41,78 @@ import {
 import { useApiMutation, useApiQuery } from "@/lib/query";
 import { CopyButton, CredentialsDialog, InfoRow, METHOD, PayStatusBadge, ROLE_UZ, STUDENT_STATUS, StudentStatusBadge, periodLabel } from "./shared";
 import { EditStudentDialog, EnrollDialog, LinkParentDialog, MessageDialog, STUDENT_KEYS, StatusDialog } from "./StudentDialogs";
-import type { Credential, ResetResult, StudentDetail } from "./types";
+import type { Credential, Ledger, ResetResult, StudentDetail } from "./types";
 
 type DialogKind = "edit" | "status" | "enroll" | "message" | "link" | "reset" | "profile" | null;
 
 export function useStudentDetail(id: string | null) {
   return useApiQuery<StudentDetail>(["admin", "students", "detail", id], id ? `/admin/students/${id}` : null);
+}
+
+/** Profil → «Toʻlovlar»: balans va hisoblar (qisman toʻlov bilan) toʻlov daftaridan olinadi. */
+function PanelPayments({ id }: { id: string }) {
+  const { data: L, isLoading, error } = useApiQuery<Ledger>(["admin", "payments", "ledger", id], `/admin/payments/students/${id}/ledger`);
+  if (isLoading) return <Skeleton className="h-40 w-full" />;
+  if (error || !L) return <EmptyState compact icon="payments" title="Toʻlovlar yuklanmadi" description={error?.message} />;
+  const b = L.balance;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { l: "Qarzdorlik", v: b.outstanding, cls: "text-error" },
+          { l: "Muddati oʻtgan", v: b.overdue, cls: "text-error" },
+          { l: "Avans", v: b.advance, cls: "text-success" },
+        ].map((x) => (
+          <div key={x.l} className="min-w-0 rounded-xl bg-surface-container-low p-3">
+            <p className="truncate font-label-sm text-label-sm text-on-surface-variant">{x.l}</p>
+            <p className={cn("font-label-lg text-label-lg tabular-nums", x.v > 0 ? x.cls : "text-on-surface-muted")}>{fmtNum(x.v)}</p>
+          </div>
+        ))}
+      </div>
+      {L.charges.length ? (
+        <ul className="flex flex-col divide-y divide-outline-variant/60 rounded-xl border border-outline-variant/70">
+          {L.charges.map((p) => {
+            const partial = (p.status === "PENDING" || p.status === "OVERDUE") && p.paidAmount > 0;
+            return (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-label-md text-label-md">
+                    {periodLabel(p.period)} · <span className="tabular-nums">{fmtMoney(p.amount)}</span>
+                  </p>
+                  <p className="text-body-sm text-on-surface-variant">
+                    {p.group?.name ?? "Qoʻshimcha"} ·{" "}
+                    {p.status === "PAID" && p.paidAt
+                      ? `${fmtDateTime(p.paidAt)}${p.method ? `, ${METHOD[p.method].label}` : ""}${p.receiptNo ? ` · ${p.receiptNo}` : ""}`
+                      : partial
+                        ? `${fmtNum(p.paidAmount)} toʻlangan · qoldiq ${fmtNum(p.outstanding)} · muddat ${fmtDateShort(p.dueDate)}`
+                        : `Muddat: ${fmtDateShort(p.dueDate)}`}
+                  </p>
+                </div>
+                <span className="flex items-center gap-1">
+                  {partial ? (
+                    <Badge tone="gold" icon="donut_large">
+                      Qisman
+                    </Badge>
+                  ) : null}
+                  <PayStatusBadge status={p.status} />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <EmptyState compact icon="payments" title="Oylik hisoblar yoʻq" />
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <Link to={`/admin/tolovlar?receive=${id}`} className="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:underline">
+          <Icon name="payments" size={16} /> Toʻlov qabul qilish
+        </Link>
+        <Link to={`/admin/tolovlar?ledger=${id}`} className="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:underline">
+          Toʻlov daftarini ochish <Icon name="arrow_forward" size={16} />
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 const pctTone = (p: number | null | undefined) => (p == null ? "neutral" : p >= 90 ? "primary" : p >= 80 ? "navy" : p >= 70 ? "gold" : "danger");
@@ -483,29 +549,7 @@ function StudentProfileDialog({
         </TabsContent>
 
         <TabsContent value="pay">
-          {s.payments.length ? (
-            <ul className="flex flex-col divide-y divide-outline-variant/60 rounded-xl border border-outline-variant/70">
-              {s.payments.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="font-label-md text-label-md">
-                      {periodLabel(p.period)} · <span className="tabular-nums">{fmtMoney(p.amount)}</span>
-                    </p>
-                    <p className="text-body-sm text-on-surface-variant">
-                      {p.group?.name ?? "Qoʻshimcha"} ·{" "}
-                      {p.paidAt ? `${fmtDateTime(p.paidAt)}${p.method ? `, ${METHOD[p.method].label}` : ""}${p.receiptNo ? ` · ${p.receiptNo}` : ""}` : `Muddat: ${fmtDateShort(p.dueDate)}`}
-                    </p>
-                  </div>
-                  <PayStatusBadge status={p.status} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState compact icon="payments" title="Toʻlovlar yoʻq" />
-          )}
-          <Link to={`/admin/tolovlar?q=${encodeURIComponent(s.code)}`} className="mt-3 inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:underline">
-            Toʻlovlar sahifasida ochish <Icon name="arrow_forward" size={16} />
-          </Link>
+          <PanelPayments id={s.id} />
         </TabsContent>
 
         <TabsContent value="audit">

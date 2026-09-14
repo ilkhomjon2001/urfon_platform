@@ -204,12 +204,24 @@ export interface ParentLookup {
 
 // ─────────── Toʻlovlar ───────────
 
+/** Hisobni yopgan tushum ulushi (bitta tushum bir hisobga bir necha marta taqsimlangan boʻlishi mumkin). */
+export interface ChargeReceipt {
+  transactionId: string;
+  receiptNo: string;
+  amount: number;
+  paidAt: ISODate;
+  method: PaymentMethod;
+}
+
+/** Oylik hisob (Payment). PAID ⇔ toʻliq yopilgan; qisman — PENDING/OVERDUE va paidAmount > 0. */
 export interface PaymentRow {
   id: string;
   student: { id: string; fullName: string; code: string; status: StudentStatus | null };
   group: { id: string; code: string; name: string; room: string | null; teacher: string | null } | null;
   period: string;
   amount: number;
+  paidAmount: number;
+  outstanding: number;
   status: PaymentStatus;
   rawStatus: PaymentStatus;
   dueDate: string | null;
@@ -217,6 +229,7 @@ export interface PaymentRow {
   paidAt: ISODate | null;
   method: PaymentMethod | null;
   receiptNo: string | null;
+  receipts: ChargeReceipt[];
   note: string | null;
   createdAt: ISODate;
 }
@@ -224,6 +237,9 @@ export interface PaymentRow {
 export interface PaymentTotals {
   plan: number;
   collected: number;
+  /** qisman toʻlangan hisoblar soni */
+  partial: number;
+  /** kutilayotgan hisoblarning TOʻLANMAGAN qismi */
   pending: number;
   overdue: number;
   cancelled: number;
@@ -242,8 +258,25 @@ export interface PaymentPeriods {
   items: { period: string; label: string; count: number }[];
 }
 
+/** Tushumning qaysi oyga qancha taqsimlangani. */
+export interface TxAllocation {
+  paymentId: string;
+  period: string;
+  periodLabel: string;
+  amount: number;
+  group: { id: string; name: string } | null;
+}
+
+export interface TxReversed {
+  at: ISODate;
+  by: string | null;
+  reason: string | null;
+}
+
+/** Kvitansiya: tushum (transactionId) yoki eski hisob (transactionId: null) boʻyicha. */
 export interface Receipt {
   id: string;
+  transactionId: string | null;
   receiptNo: string;
   status: PaymentStatus;
   paidAt: ISODate;
@@ -251,14 +284,100 @@ export interface Receipt {
   methodLabel: string | null;
   amount: number;
   amountLabel: string;
-  period: string;
+  period: string | null;
   periodLabel: string;
   note: string | null;
-  student: { fullName: string; code: string };
+  student: { id: string; fullName: string; code: string };
   group: { name: string; code: string } | null;
+  allocations: TxAllocation[];
+  advance: number;
+  reversed: TxReversed | null;
   payers: string[];
   cashier: string | null;
   center: { name: string; branch: string | null; address: string | null; phone: string | null };
+}
+
+/** Kassaga kelgan pul (PaymentTransaction). */
+export interface PaymentTx {
+  id: string;
+  student: { id: string; fullName: string; code: string };
+  amount: number;
+  method: PaymentMethod;
+  paidAt: ISODate;
+  receiptNo: string;
+  note: string | null;
+  createdAt: ISODate;
+  createdBy: string | null;
+  reversed: TxReversed | null;
+  allocations: TxAllocation[];
+  /** taqsimlanmagan qism (avans) */
+  advance: number;
+}
+
+export interface TxList extends Paginated<PaymentTx> {
+  totals: { amount: number; count: number; methods: { method: PaymentMethod; label: string; amount: number; count: number }[] };
+}
+
+export interface StudentBalance {
+  outstanding: number;
+  overdue: number;
+  advance: number;
+  /** avans − qarzdorlik (manfiy — qarz) */
+  balance: number;
+  openCount: number;
+}
+
+export interface BillingStudent {
+  student: { id: string; fullName: string; code: string; status: StudentStatus | null; phone: string | null };
+  groups: { id: string; name: string; monthlyFee: number; waiting: boolean }[];
+  monthlyFee: number | null;
+  parents: { fullName: string; phone: string | null; relation: string; telegramLinked: boolean }[];
+}
+
+export type BalanceState = "overdue" | "partial" | "debt" | "advance" | "clear" | "none";
+export type BalanceFilter = "all" | "debtors" | "overdue" | "partial" | "advance" | "clear" | "none";
+
+export interface BalanceRow extends BillingStudent {
+  charged: number;
+  paid: number;
+  outstanding: number;
+  overdue: number;
+  advance: number;
+  balance: number;
+  openCount: number;
+  partialCount: number;
+  oldestDue: string | null;
+  lastPaidAt: ISODate | null;
+  state: BalanceState;
+}
+
+export interface BalanceList extends Paginated<BalanceRow> {
+  counts: Record<BalanceFilter, number>;
+  totals: { outstanding: number; overdue: number; advance: number; debtors: number };
+}
+
+export interface Ledger extends BillingStudent {
+  balance: StudentBalance;
+  suggestedAmount: number;
+  charges: PaymentRow[];
+  transactions: PaymentTx[];
+}
+
+export interface ReceiveResult {
+  transaction: PaymentTx;
+  balance: StudentBalance;
+}
+
+export interface GenerateResult {
+  period: string;
+  dueDate: string;
+  created: number;
+  skippedExisting: number;
+  skippedInactive: number;
+  /** boshlanmagan guruhlarning kutish roʻyxatidagilar — ularga hisob yozilmaydi */
+  waiting: number;
+  totalAmount: number;
+  coveredByAdvance: number;
 }
 
 // ─────────── Hisobotlar ───────────
@@ -273,7 +392,9 @@ export interface Report {
     id: string;
     student: { id: string; fullName: string; code: string; status: StudentStatus | null };
     group: { id: string; name: string } | null;
+    /** qolgan (toʻlanmagan) qarz */
     amount: number;
+    paidAmount: number;
     status: PaymentStatus;
     dueDate: string | null;
     daysOverdue: number;

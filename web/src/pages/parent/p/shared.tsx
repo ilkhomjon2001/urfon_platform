@@ -129,9 +129,10 @@ export const PAY_META: Record<PaymentStatus, { label: string; tone: Tone; icon: 
   CANCELLED: { label: "Bekor qilingan", tone: "neutral", icon: "block" },
 };
 
+/** API (lib/billing METHOD_LABEL) bilan bir xil — tushumlarda `methodLabel` shu matnlarda keladi. */
 export const METHOD_LABEL: Record<PaymentMethod, string> = {
-  CASH: "Naqd",
-  CARD: "Plastik karta",
+  CASH: "Naqd (kassa)",
+  CARD: "Karta",
   CLICK: "Click",
   PAYME: "Payme",
   TRANSFER: "Bank oʻtkazmasi",

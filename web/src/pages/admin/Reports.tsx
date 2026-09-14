@@ -467,8 +467,13 @@ export default function AdminReportsPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="font-headline-sm text-headline-sm tabular-nums text-error">{fmtMoney(o.amount)}</p>
-                          <p className="text-body-sm text-error">{fmtNum(o.daysOverdue)} kun kechikkan</p>
+                          <p className="font-headline-sm text-headline-sm tabular-nums text-error" title="Qolgan (toʻlanmagan) qarz">
+                            {fmtMoney(o.amount)}
+                          </p>
+                          <p className="text-body-sm text-error">
+                            {o.paidAmount > 0 ? <span className="text-on-surface-variant">{fmtNum(o.paidAmount)} toʻlangan · </span> : null}
+                            {fmtNum(o.daysOverdue)} kun kechikkan
+                          </p>
                         </div>
                         <Button size="sm" variant="danger" icon="sms" loading={remind.isPending && remind.variables === o.id} onClick={() => remind.mutate(o.id)} data-no-print>
                           Qarzdorlik eslatmasi
