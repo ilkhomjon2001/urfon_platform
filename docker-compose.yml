@@ -1,0 +1,77 @@
+# URFON platformasi — production (bitta VPS). Qoʻllanma: deploy/README-DEPLOY.md
+#   docker compose up -d --build
+# Oʻzgaruvchilar .env faylidan olinadi (DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, TELEGRAM_*, TURNSTILE_API_KEY …).
+name: urfon
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: urfon
+      POSTGRES_DB: urfon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env faylida boʻlishi kerak}
+      # oʻ/gʻ (U+02BB) va boshqa belgilar toʻgʻri saqlansin
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: UTC
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urfon -d urfon"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    shm_size: 256mb
+
+  app:
+    build: .
+    image: urfon-platforma:latest
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://urfon:${POSTGRES_PASSWORD}@db:5432/urfon
+      # https://platforma.urfon.uz (domen bilan) yoki http://SERVER_IP (domen hali yo'q)
+      APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN .env faylida boʻlishi kerak}
+      WEB_DIST: /app/web/dist
+      UPLOAD_DIR: /data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/data/uploads
+    # Caddy bilan: 127.0.0.1 (faqat lokal). Umumiy serverda Caddy'siz: APP_BIND=0.0.0.0 APP_PORT=4900 TRUST_PROXY=false
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-3000}:3000"
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  caddy:
+    image: caddy:2
+    # faqat COMPOSE_PROFILES=caddy bo'lsa ishga tushadi (80/443 boshqa xizmat bilan band bo'lsa o'chiq qoldiring)
+    profiles: ["caddy"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      # domen bo'lsa: platforma.urfon.uz (avtomatik HTTPS); bo'lmasa: ":80" (oddiy HTTP, IP orqali)
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  uploads:
+  caddy-data:
+  caddy-config:

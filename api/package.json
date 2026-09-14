@@ -1,0 +1,43 @@
+{
+  "name": "api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed/index.ts",
+    "db:seed:prod": "tsx prisma/seed/prod.ts",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "job": "tsx scripts/run-job.ts",
+    "bot:selftest": "tsx scripts/bot-selftest.ts",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.0.2",
+    "@fastify/cors": "11.1.0",
+    "@fastify/helmet": "13.0.1",
+    "@fastify/multipart": "9.2.1",
+    "@fastify/rate-limit": "10.3.0",
+    "@fastify/static": "8.2.0",
+    "@node-rs/argon2": "2.0.2",
+    "@prisma/client": "6.19.3",
+    "croner": "9.1.0",
+    "fastify": "5.6.1",
+    "grammy": "1.38.3",
+    "jose": "6.1.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.4",
+    "embedded-postgres": "17.9.0-beta.16",
+    "prisma": "6.19.3",
+    "tsup": "8.5.0",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

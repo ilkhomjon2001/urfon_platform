@@ -1,0 +1,21 @@
+# Caddy: DOMAIN uchun avtomatik HTTPS (Let's Encrypt sertifikati) va app:3000 ga reverse proxy.
+# DOMAIN .env faylidan keladi (docker-compose.yml → caddy.environment).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# Yuklash chegarasi: API MAX_UPLOAD_MB (25 MB) dan biroz kattaroq
+	request_body {
+		max_size 30MB
+	}
+
+	reverse_proxy app:3000
+
+	header {
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

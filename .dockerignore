@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/uploads
+.dev-db*
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+.git
+.DS_Store
+deploy/backups
+docker-compose.yml
+Dockerfile
+.dockerignore

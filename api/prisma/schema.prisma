@@ -1,0 +1,746 @@
+// URFON platformasi — ma'lumotlar modeli.
+// Yagona manba: shu fayl. Agentlar/dasturchilar faqat migratsiya orqali o'zgartiradi.
+// Barcha rol bog'lanishlari User.id ga ishora qiladi (ustoz, o'quvchi, ota-ona — hammasi User).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Foydalanuvchilar va auth ───────────────────────────
+
+enum Role {
+  ADMIN
+  TEACHER
+  PARENT
+  STUDENT
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  login              String    @unique // telefon (+998901234567) yoki o'quvchi kodi (ST-8492)
+  passwordHash       String
+  role               Role
+  fullName           String
+  phone              String?
+  title              String? // "IELTS katta ustozi", "Bosh administrator", "Ota"
+  avatarUrl          String?
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions        Session[]
+  teacherProfile  TeacherProfile?
+  studentProfile  StudentProfile?
+  // ota-ona ↔ farzand
+  children        ParentStudent[]     @relation("ParentLinks")
+  parents         ParentStudent[]     @relation("StudentLinks")
+  // ustoz
+  teachingGroups  Group[]             @relation("GroupTeacher")
+  // o'quvchi
+  enrollments     GroupStudent[]
+  attendance      Attendance[]        @relation("AttendanceStudent")
+  submissions     Submission[]        @relation("SubmissionStudent")
+  grades          Grade[]             @relation("GradeStudent")
+  examResults     ExamResult[]
+  payments        Payment[]           @relation("PaymentStudent")
+  coins           CoinTransaction[]   @relation("CoinStudent")
+  // umumiy
+  threadLinks     ThreadParticipant[]
+  messages        Message[]
+  notifications   Notification[]
+  telegramLink    TelegramLink?
+  telegramCodes   TelegramLinkCode[]
+  auditEntries    AuditLog[]
+  filesUploaded   File[]
+  materials       Material[]
+  homeworkCreated Homework[]
+  gradesGiven     Grade[]             @relation("GradeGivenBy")
+  reviews         Submission[]        @relation("SubmissionReviewer")
+  attendanceMarks Attendance[]        @relation("AttendanceMarkedBy")
+  topicsAuthored  Topic[]
+  paymentsCreated Payment[]           @relation("PaymentCreatedBy")
+  coinsGiven      CoinTransaction[]   @relation("CoinGivenBy")
+
+  @@index([role])
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique // sha256(refresh token)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TeacherProfile {
+  userId          String   @id
+  specialization  String? // "IELTS 8.5"
+  certificates    String[]
+  experienceYears Int?
+  bio             String?
+  responseTime    String? // "odatda 1–2 soat"
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum StudentStatus {
+  ACTIVE
+  ACADEMIC_LEAVE
+  GRADUATED
+  LEFT
+}
+
+model StudentProfile {
+  userId         String        @id
+  code           String        @unique // "ST-8492"
+  birthDate      DateTime?     @db.Date
+  goal           String? // "IELTS 7.5+"
+  turnstileId    String?       @unique // "TURN-8492"
+  status         StudentStatus @default(ACTIVE)
+  enrolledAt     DateTime      @default(now()) @db.Date
+  leftAt         DateTime?     @db.Date
+  coinBalance    Int           @default(0) // CoinTransaction yig'indisining keshi
+  streakDays     Int           @default(0)
+  lastStreakDate DateTime?     @db.Date
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ParentStudent {
+  parentId  String
+  studentId String
+  relation  String   @default("Ota") // "Ota" | "Ona" | "Vasiy"
+  createdAt DateTime @default(now())
+  parent    User     @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  student   User     @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([parentId, studentId])
+  @@index([studentId])
+}
+
+// ─────────────────────────── Markaz tuzilmasi ───────────────────────────
+
+model Branch {
+  id      String  @id @default(cuid())
+  name    String // "Chilonzor filiali"
+  address String?
+  phone   String?
+  rooms   Room[]
+}
+
+model Room {
+  id       String   @id @default(cuid())
+  branchId String
+  name     String // "204-xona"
+  location String? // "Bosh bino, 2-qavat"
+  capacity Int      @default(16)
+  kind     String? // "Audio Lab", "Bolalar zali"
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  groups   Group[]
+  lessons  Lesson[]
+
+  @@unique([branchId, name])
+}
+
+model Level {
+  id     String  @id @default(cuid())
+  code   String  @unique // "L1".."L6", "KIDS"
+  name   String // "IELTS Foundation"
+  order  Int
+  topics Topic[]
+  groups Group[]
+}
+
+enum TopicStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Mavzular bazasi (curriculum / sillabus)
+model Topic {
+  id           String        @id @default(cuid())
+  levelId      String
+  unit         Int // tartib raqami: Unit 4
+  title        String // "My Family & Relationships"
+  description  String?
+  objectives   String[]
+  vocabulary   String[]
+  grammar      String?
+  lessonsCount Int           @default(4)
+  hours        Float         @default(6)
+  status       TopicStatus   @default(PUBLISHED)
+  authorId     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  level        Level         @relation(fields: [levelId], references: [id])
+  author       User?         @relation(fields: [authorId], references: [id])
+  lessons      LessonTopic[]
+  homework     Homework[]
+  materials    Material[]
+
+  @@unique([levelId, unit])
+}
+
+enum GroupStatus {
+  ENROLLING // yangi qabul
+  ACTIVE
+  FINISHED
+}
+
+model Group {
+  id           String            @id @default(cuid())
+  code         String            @unique // "GR-03"
+  name         String // "IELTS Foundation #3"
+  levelId      String?
+  teacherId    String? // null = ustoz biriktirilmagan
+  roomId       String?
+  days         Int[] // ISO hafta kunlari: 1=Du … 7=Ya
+  startTime    String // "14:00"
+  endTime      String // "15:30"
+  capacity     Int               @default(16)
+  status       GroupStatus       @default(ACTIVE)
+  startDate    DateTime          @db.Date
+  endDate      DateTime?         @db.Date
+  monthlyFee   Int               @default(850000) // so'm
+  totalLessons Int               @default(48)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  level        Level?            @relation(fields: [levelId], references: [id])
+  teacher      User?             @relation("GroupTeacher", fields: [teacherId], references: [id])
+  room         Room?             @relation(fields: [roomId], references: [id])
+  students     GroupStudent[]
+  lessons      Lesson[]
+  homework     Homework[]
+  exams        Exam[]
+  materials    Material[]
+  grades       Grade[]
+  payments     Payment[]
+  threads      Thread[]
+  coins        CoinTransaction[]
+
+  @@index([teacherId])
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  WAITING // guruh boshlanishini kutmoqda
+  LEFT
+}
+
+model GroupStudent {
+  groupId   String
+  studentId String
+  status    EnrollmentStatus @default(ACTIVE)
+  joinedAt  DateTime         @default(now()) @db.Date
+  leftAt    DateTime?        @db.Date
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student   User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, studentId])
+  @@index([studentId])
+}
+
+// ─────────────────────────── Darslar va davomat ───────────────────────────
+
+enum LessonStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+model Lesson {
+  id           String        @id @default(cuid())
+  groupId      String
+  roomId       String?
+  number       Int? // guruhdagi dars tartib raqami (28/48)
+  title        String? // "Unit 4 — My Family & Relationships (1-qism)"
+  startsAt     DateTime
+  endsAt       DateTime
+  status       LessonStatus  @default(PLANNED)
+  summary      String? // ustozning dars xulosasi (ota-onaga ko'rinadi)
+  homeworkNote String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  group        Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  room         Room?         @relation(fields: [roomId], references: [id])
+  topics       LessonTopic[]
+  attendance   Attendance[]
+  grades       Grade[]
+  homework     Homework[]
+  materials    Material[]
+  messages     Message[]
+
+  @@index([groupId, startsAt])
+  @@index([startsAt])
+}
+
+model LessonTopic {
+  lessonId String
+  topicId  String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  topic    Topic  @relation(fields: [topicId], references: [id])
+
+  @@id([lessonId, topicId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  EXCUSED // sababli kelmadi
+  ABSENT
+}
+
+model Attendance {
+  id         String           @id @default(cuid())
+  lessonId   String
+  studentId  String
+  status     AttendanceStatus
+  arrivedAt  DateTime?
+  source     String           @default("MANUAL") // MANUAL | TURNSTILE
+  note       String?
+  markedById String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  lesson     Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student    User             @relation("AttendanceStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy   User?            @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+
+  @@unique([lessonId, studentId])
+  @@index([studentId])
+}
+
+// ─────────────────────────── Vazifalar va baholar ───────────────────────────
+
+enum HomeworkType {
+  TEXT
+  AUDIO
+  FILE
+  QUIZ
+}
+
+model Homework {
+  id          String       @id @default(cuid())
+  groupId     String
+  lessonId    String?
+  topicId     String?
+  title       String // "Unit 4 — Family words"
+  description String?
+  type        HomeworkType @default(TEXT)
+  // QUIZ uchun: [{ q, options[], answer }] yoki boshqa tuzilma
+  content     Json?
+  dueAt       DateTime
+  coinReward  Int          @default(10)
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  group       Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  lesson      Lesson?      @relation(fields: [lessonId], references: [id])
+  topic       Topic?       @relation(fields: [topicId], references: [id])
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  submissions Submission[]
+  files       File[]
+
+  @@index([groupId, dueAt])
+}
+
+enum SubmissionStatus {
+  DRAFT // qoralama — hali topshirilmagan
+  SUBMITTED // tekshiruvni kutmoqda
+  REVIEWED
+  RETURNED // qayta ishlashga qaytarildi
+}
+
+model Submission {
+  id           String           @id @default(cuid())
+  homeworkId   String
+  studentId    String
+  status       SubmissionStatus @default(DRAFT)
+  text         String?
+  answers      Json?
+  submittedAt  DateTime?
+  isLate       Boolean          @default(false)
+  reviewerId   String?
+  reviewedAt   DateTime?
+  score        Int? // 2..5
+  feedback     String?
+  coinsAwarded Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  homework     Homework         @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student      User             @relation("SubmissionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  reviewer     User?            @relation("SubmissionReviewer", fields: [reviewerId], references: [id])
+  files        File[]
+  grade        Grade?
+
+  @@unique([homeworkId, studentId])
+  @@index([studentId])
+  @@index([status])
+}
+
+enum GradeKind {
+  HOMEWORK
+  CLASSWORK // darsdagi faollik/javob
+  TEST
+  SPEAKING
+  WRITING
+  MOCK
+}
+
+enum Skill {
+  SPEAKING
+  LISTENING
+  READING
+  WRITING
+  GRAMMAR
+  VOCABULARY
+}
+
+// Baho 5 ballik shkalada (2..5). Test o'rtachasi kasr bo'lishi mumkin (4.6).
+model Grade {
+  id           String      @id @default(cuid())
+  studentId    String
+  groupId      String
+  lessonId     String?
+  submissionId String?     @unique
+  kind         GradeKind
+  skill        Skill?
+  value        Float // 2.0 … 5.0
+  title        String? // "Unit 3 lug'at testi"
+  comment      String?
+  givenById    String
+  gradedAt     DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  student      User        @relation("GradeStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  group        Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  lesson       Lesson?     @relation(fields: [lessonId], references: [id])
+  submission   Submission? @relation(fields: [submissionId], references: [id])
+  givenBy      User        @relation("GradeGivenBy", fields: [givenById], references: [id])
+
+  @@index([studentId, gradedAt])
+  @@index([groupId])
+}
+
+// ─────────────────────────── Imtihonlar ───────────────────────────
+
+enum ExamType {
+  MOCK // IELTS mock (band)
+  MIDTERM
+  FINAL
+  QUIZ // test (foiz)
+}
+
+model Exam {
+  id          String       @id @default(cuid())
+  groupId     String? // null = markaz miqyosidagi imtihon
+  title       String // "Markaz Mock imtihoni (LRW)"
+  type        ExamType
+  startsAt    DateTime
+  durationMin Int          @default(180)
+  location    String? // "Katta zal"
+  description String?
+  createdById String?
+  createdAt   DateTime     @default(now())
+  group       Group?       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  results     ExamResult[]
+}
+
+model ExamResult {
+  id        String   @id @default(cuid())
+  examId    String
+  studentId String
+  band      Float? // IELTS: 6.5
+  percent   Int? // test: 88
+  listening Float?
+  reading   Float?
+  writing   Float?
+  speaking  Float?
+  comment   String?
+  createdAt DateTime @default(now())
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+// ─────────────────────────── Materiallar va fayllar ───────────────────────────
+
+enum MaterialType {
+  PDF
+  AUDIO
+  VIDEO
+  DOC
+  IMAGE
+  LINK
+}
+
+model Material {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  type         MaterialType
+  fileId       String?      @unique
+  url          String? // LINK turi uchun
+  levelId      String?
+  topicId      String?
+  groupId      String? // null = umumiy resurslar bazasi
+  lessonId     String?
+  uploadedById String
+  downloads    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  file         File?        @relation("MaterialFile", fields: [fileId], references: [id])
+  topic        Topic?       @relation(fields: [topicId], references: [id])
+  group        Group?       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id])
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+
+  @@index([groupId])
+  @@index([topicId])
+}
+
+// Diskdagi fayl (UPLOAD_DIR/storageKey). Kirish huquqi /api/files/:id da tekshiriladi.
+model File {
+  id           String      @id @default(cuid())
+  originalName String
+  mime         String
+  size         Int
+  storageKey   String      @unique
+  uploadedById String
+  submissionId String?
+  homeworkId   String?
+  messageId    String?
+  createdAt    DateTime    @default(now())
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id])
+  submission   Submission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  homework     Homework?   @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  message      Message?    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  material     Material?   @relation("MaterialFile")
+}
+
+// ─────────────────────────── Xabarlar ───────────────────────────
+
+enum ThreadKind {
+  DIRECT // ustoz ↔ ota-ona / ustoz ↔ o'quvchi / admin ↔ kimdir
+  GROUP // ustoz → butun guruh ota-onalariga e'lon
+}
+
+model Thread {
+  id            String              @id @default(cuid())
+  kind          ThreadKind          @default(DIRECT)
+  subject       String?
+  studentId     String? // qaysi farzand haqida (ota-ona suhbatlari uchun)
+  groupId       String?
+  createdAt     DateTime            @default(now())
+  lastMessageAt DateTime            @default(now())
+  group         Group?              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participants  ThreadParticipant[]
+  messages      Message[]
+
+  @@index([lastMessageAt])
+}
+
+model ThreadParticipant {
+  threadId   String
+  userId     String
+  lastReadAt DateTime?
+  thread     Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  threadId   String
+  senderId   String
+  body       String
+  lessonId   String? // ota-ona dars tafsilotidan savol yuborganda
+  isQuestion Boolean  @default(false) // savol chipi orqali yuborilgan
+  createdAt  DateTime @default(now())
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender     User     @relation(fields: [senderId], references: [id])
+  lesson     Lesson?  @relation(fields: [lessonId], references: [id])
+  files      File[]
+
+  @@index([threadId, createdAt])
+}
+
+// ─────────────────────────── Moliya ───────────────────────────
+
+enum PaymentStatus {
+  PENDING // kutilmoqda
+  PAID
+  OVERDUE // muddati o'tgan
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  CLICK
+  PAYME
+  TRANSFER
+}
+
+model Payment {
+  id          String         @id @default(cuid())
+  studentId   String
+  groupId     String?
+  period      String // "2024-05"
+  amount      Int // so'm
+  status      PaymentStatus  @default(PENDING)
+  dueDate     DateTime       @db.Date
+  paidAt      DateTime?
+  method      PaymentMethod?
+  receiptNo   String?        @unique // "KV-2024-05-0142"
+  note        String?
+  createdById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  student     User           @relation("PaymentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  group       Group?         @relation(fields: [groupId], references: [id])
+  createdBy   User?          @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([studentId, period])
+  @@index([status, dueDate])
+}
+
+// ─────────────────────────── Gamifikatsiya ───────────────────────────
+
+enum CoinReason {
+  HOMEWORK_ON_TIME
+  ATTENDANCE
+  ACTIVITY // darsdagi faollik (+1..+5, ustoz belgilaydi)
+  STREAK
+  MANUAL // admin/ustoz qo'lda (izoh bilan)
+  SPEND // sarflash (manfiy)
+}
+
+model CoinTransaction {
+  id          String     @id @default(cuid())
+  studentId   String
+  groupId     String?
+  amount      Int
+  reason      CoinReason
+  refType     String? // "submission" | "attendance" | "lesson"
+  refId       String?
+  note        String?
+  createdById String?
+  createdAt   DateTime   @default(now())
+  student     User       @relation("CoinStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  group       Group?     @relation(fields: [groupId], references: [id])
+  createdBy   User?      @relation("CoinGivenBy", fields: [createdById], references: [id])
+
+  // bitta hodisa uchun ikki marta tanga berilmasin
+  @@unique([studentId, reason, refType, refId])
+  @@index([studentId, createdAt])
+  @@index([groupId, createdAt])
+}
+
+// ─────────────────────────── Audit, bildirishnoma, Telegram ───────────────────────────
+
+// Faqat qo'shiladi. UPDATE/DELETE Postgres trigger bilan taqiqlangan (migratsiyada).
+// hash = sha256(prevHash + yozuv) — zanjir buzilganini aniqlash uchun.
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  at         DateTime @default(now())
+  actorId    String?
+  actorRole  Role?
+  action     String // "grade.update", "payment.create", "group.assign_teacher"
+  entityType String
+  entityId   String?
+  summary    String? // odam o'qiydigan qisqa matn
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  prevHash   String?
+  hash       String
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([at])
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED // Telegram ulanmagan
+}
+
+// Outbox: servislar shu yerga yozadi, bot worker Telegram'ga yuboradi.
+// Ilova ichidagi qo'ng'iroqcha ham shu jadvaldan o'qiydi (readAt).
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  type      String // "homework.reviewed", "attendance.absent", "payment.due", "message.new", "report.daily"
+  title     String
+  body      String
+  link      String? // ilova ichidagi yo'l: "/ota-ona/darslar/…"
+  payload   Json?
+  telegram  Boolean            @default(true)
+  status    NotificationStatus @default(PENDING)
+  attempts  Int                @default(0)
+  error     String?
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, telegram])
+}
+
+model TelegramLink {
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  chatId   String   @unique
+  username String?
+  isActive Boolean  @default(true)
+  linkedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Bir martalik ulash kodi: t.me/<bot>?start=<code>
+model TelegramLinkCode {
+  code      String    @id
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReportType {
+  DAILY_PARENT
+  WEEKLY_PARENT
+  MONTHLY_PARENT
+  MONTHLY_ADMIN
+}
+
+model Report {
+  id        String     @id @default(cuid())
+  type      ReportType
+  period    String // "2024-05-24" | "2024-05"
+  studentId String?
+  payload   Json
+  createdAt DateTime   @default(now())
+
+  @@unique([type, period, studentId])
+}

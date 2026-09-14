@@ -1,0 +1,28 @@
+{
+  "name": "urfon-platforma",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:start": "node tools/dev-db.mjs",
+    "dev:api": "npm run dev -w api",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w api && npm run build -w web",
+    "start": "npm run start -w api",
+    "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
+    "check:uz": "node tools/check-uz.mjs"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "@embedded-postgres/windows-x64@17.9.0-beta.17": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.25.12": true
+  }
+}
