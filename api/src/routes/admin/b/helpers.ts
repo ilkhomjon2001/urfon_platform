@@ -103,13 +103,8 @@ export function paymentStatusWhere(status: PaymentStatus, today = todayDateOnly(
   }
 }
 
-export const METHOD_LABEL: Record<string, string> = {
-  CASH: "Naqd (kassa)",
-  CARD: "Karta",
-  CLICK: "Click",
-  PAYME: "Payme",
-  TRANSFER: "Bank oʻtkazmasi",
-};
+// Toʻlov daftari mantigʻi — lib/billing.ts (jobs ham ishlatadi)
+export { METHOD_LABEL, nextReceiptNo } from "../../../lib/billing.js";
 export const PAY_STATUS_LABEL: Record<string, string> = {
   PENDING: "Kutilmoqda",
   PAID: "Toʻlangan",
@@ -217,40 +212,41 @@ export async function nextStudentCode(tx: Tx) {
 }
 
 /** Kvitansiya raqami: KV-YYYY-MM-#### (oy bo'yicha ketma-ket). Tranzaksiya ichida, qulf bilan. */
-export async function nextReceiptNo(tx: Tx, paidAt: Date) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(424244)`;
-  const ym = ymdTz(paidAt).slice(0, 7);
-  const prefix = `KV-${ym}-`;
-  const rows = await tx.$queryRaw<{ max: number | null }[]>`
-    SELECT MAX(CAST(SUBSTRING("receiptNo" FROM ${prefix.length + 1}::int) AS INTEGER)) AS max
-    FROM "Payment" WHERE "receiptNo" LIKE ${prefix + "%"} AND "receiptNo" ~ '^KV-[0-9]{4}-[0-9]{2}-[0-9]+$'`;
-  const n = Number(rows[0]?.max ?? 0) + 1;
-  return `${prefix}${String(n).padStart(4, "0")}`;
-}
-
 // ─────────── To'lov jami (Payments va Reports sahifalari bir xil hisoblashi uchun YAGONA joy) ───────────
 
 export async function paymentTotals(where: Prisma.PaymentWhereInput) {
-  const rows = await prisma.payment.findMany({ where, select: { studentId: true, status: true, dueDate: true, amount: true } });
+  const rows = await prisma.payment.findMany({ where, select: { studentId: true, status: true, dueDate: true, amount: true, paidAmount: true } });
   const today = todayDateOnly();
+  // pending/overdue — hisoblarning TOʻLANMAGAN qismi; collected — qisman toʻlovlar ham (paidAmount)
   const sum = { PAID: 0, PENDING: 0, OVERDUE: 0, CANCELLED: 0 } as Record<PaymentStatus, number>;
   const cnt = { PAID: 0, PENDING: 0, OVERDUE: 0, CANCELLED: 0 } as Record<PaymentStatus, number>;
   const stu = { PAID: new Set<string>(), PENDING: new Set<string>(), OVERDUE: new Set<string>(), CANCELLED: new Set<string>() };
+  let plan = 0;
+  let collected = 0;
+  let partial = 0;
   for (const r of rows) {
     const st = effectiveStatus(r, today);
-    sum[st] += r.amount;
     cnt[st] += 1;
     stu[st].add(r.studentId);
+    if (st === "CANCELLED") {
+      sum.CANCELLED += r.amount;
+      continue;
+    }
+    plan += r.amount;
+    const paid = st === "PAID" ? r.amount : r.paidAmount;
+    collected += paid;
+    sum[st] += r.amount - paid;
+    if (st !== "PAID" && paid > 0) partial++;
   }
-  const plan = sum.PAID + sum.PENDING + sum.OVERDUE;
   const active = cnt.PAID + cnt.PENDING + cnt.OVERDUE;
   return {
     plan,
-    collected: sum.PAID,
+    collected,
+    partial,
     pending: sum.PENDING,
     overdue: sum.OVERDUE,
     cancelled: sum.CANCELLED,
-    collectedPercent: pct(sum.PAID, plan, 0),
+    collectedPercent: pct(collected, plan, 0),
     avgAmount: active ? Math.round(plan / active) : null,
     count: rows.length,
     counts: { ALL: rows.length, ...cnt },

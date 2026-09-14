@@ -166,8 +166,18 @@ export function planPayments(m: Model) {
 export async function writePayments(db: Db, plan: ReturnType<typeof planPayments>) {
   await insertMany(
     db.payment,
-    plan.rows.map(({ student: _s, ...r }) => ({ ...r, receiptNo: r.receiptNo || null, updatedAt: r.updatedAt ?? r.paidAt ?? r.createdAt })),
+    plan.rows.map(({ student: _s, ...r }) => ({
+      ...r, receiptNo: r.receiptNo || null, paidAmount: r.status === "PAID" ? r.amount : 0, updatedAt: r.updatedAt ?? r.paidAt ?? r.createdAt,
+    })),
   );
+  // Toʻlov daftari (lib/billing.ts): har bir toʻlangan hisob — kassaga kelgan pul (tushum) + taqsimot, kvitansiya raqami bir xil
+  const paid = plan.rows.filter((r) => r.status === "PAID" && r.receiptNo && r.paidAt && r.method);
+  const txs = paid.map((r) => ({
+    id: cid(), studentId: r.studentId, amount: r.amount, method: r.method as PaymentMethod, paidAt: r.paidAt as Date, receiptNo: r.receiptNo as string,
+    note: r.note ?? null, createdById: r.createdById ?? null, createdAt: r.paidAt as Date, paymentId: r.id,
+  }));
+  await insertMany(db.paymentTransaction, txs.map(({ paymentId: _p, ...t }) => t));
+  await insertMany(db.paymentAllocation, txs.map((t) => ({ id: cid(), transactionId: t.id, paymentId: t.paymentId, amount: t.amount, createdAt: t.createdAt })));
   void ymdOf;
   return plan.rows.length;
 }

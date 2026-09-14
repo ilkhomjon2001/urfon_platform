@@ -120,7 +120,7 @@ export default async function dashboard(app: FastifyInstance) {
       prisma.payment.findMany({
         where: { studentId, status: { in: ["PENDING", "OVERDUE"] } },
         orderBy: { dueDate: "asc" },
-        select: { id: true, period: true, amount: true, status: true, dueDate: true, group: { select: { name: true } } },
+        select: { id: true, period: true, amount: true, paidAmount: true, status: true, dueDate: true, group: { select: { name: true } } },
       }),
       primary ? prisma.lesson.count({ where: { groupId: primary.id, status: "DONE" } }) : Promise.resolve(0),
       prisma.submission.findMany({
@@ -330,7 +330,7 @@ export default async function dashboard(app: FastifyInstance) {
         ? {
             current: payments[0],
             count: payments.length,
-            totalDue: payments.reduce((s, p) => s + p.amount, 0),
+            totalDue: payments.reduce((s, p) => s + p.amount - p.paidAmount, 0),
             hasOverdue: payments.some((p) => p.status === "OVERDUE"),
           }
         : null,

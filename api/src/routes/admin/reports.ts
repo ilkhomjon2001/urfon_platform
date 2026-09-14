@@ -42,7 +42,7 @@ async function buildReport(period: string) {
   const periods = Array.from({ length: 6 }, (_, i) => shiftPeriod(period, i - 5));
   const [totals, seriesRows, overdueRows, methodRows] = await Promise.all([
     paymentTotals({ period }),
-    prisma.payment.findMany({ where: { period: { in: periods } }, select: { period: true, status: true, amount: true, dueDate: true } }),
+    prisma.payment.findMany({ where: { period: { in: periods } }, select: { period: true, status: true, amount: true, paidAmount: true, dueDate: true } }),
     prisma.payment.findMany({
       where: { period, ...paymentStatusWhere("OVERDUE", today) },
       orderBy: { dueDate: "asc" },
@@ -56,11 +56,24 @@ async function buildReport(period: string) {
         group: { select: { id: true, name: true } },
       },
     }),
-    prisma.payment.groupBy({ by: ["method"], where: { period, status: "PAID" }, _sum: { amount: true }, _count: { _all: true } }),
+    // usullar kesimi: shu davr hisoblariga taqsimlangan tushumlar (qisman ham) + tushumsiz eski toʻlangan hisoblar
+    prisma.$queryRaw<{ method: string; amount: bigint; count: number }[]>`
+      SELECT method, SUM(amount)::bigint AS amount, COUNT(DISTINCT k)::int AS count FROM (
+        SELECT t.method::text AS method, a.amount, t.id AS k
+        FROM "PaymentAllocation" a
+        JOIN "PaymentTransaction" t ON t.id = a."transactionId"
+        JOIN "Payment" p ON p.id = a."paymentId"
+        WHERE p.period = ${period} AND t."reversedAt" IS NULL AND p.status <> 'CANCELLED'
+        UNION ALL
+        SELECT p.method::text, p.amount, p.id
+        FROM "Payment" p
+        WHERE p.period = ${period} AND p.status = 'PAID' AND p.method IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM "PaymentAllocation" a WHERE a."paymentId" = p.id)
+      ) x GROUP BY method`,
   ]);
   const series = periods.map((p) => {
     const rows = seriesRows.filter((r) => r.period === p);
-    const collected = rows.filter((r) => r.status === "PAID").reduce((a, r) => a + r.amount, 0);
+    const collected = rows.filter((r) => r.status !== "CANCELLED").reduce((a, r) => a + (r.status === "PAID" ? r.amount : r.paidAmount), 0);
     const plan = rows.filter((r) => r.status !== "CANCELLED").reduce((a, r) => a + r.amount, 0);
     return { period: p, label: periodLabel(p), collected, plan, percent: pct(collected, plan, 0) };
   });
@@ -214,13 +227,14 @@ async function buildReport(period: string) {
     revenue: { ...totals, series },
     methods: methodRows
       .filter((m) => m.method)
-      .map((m) => ({ method: m.method, label: METHOD_LABEL[m.method!], amount: m._sum.amount ?? 0, count: m._count._all }))
+      .map((m) => ({ method: m.method, label: METHOD_LABEL[m.method], amount: Number(m.amount), count: m.count }))
       .sort((a, b) => b.amount - a.amount),
     overdue: overdueRows.map((p) => ({
       id: p.id,
       student: { id: p.student.id, fullName: p.student.fullName, code: p.student.studentProfile?.code ?? "", status: p.student.studentProfile?.status ?? null },
       group: p.group,
-      amount: p.amount,
+      amount: p.amount - p.paidAmount, // qolgan qarz (qisman toʻlangan boʻlishi mumkin)
+      paidAmount: p.paidAmount,
       status: effectiveStatus(p, today),
       dueDate: ymdOfDateOnly(p.dueDate),
       daysOverdue: Math.max(0, Math.round((today.getTime() - p.dueDate.getTime()) / 86_400_000)),

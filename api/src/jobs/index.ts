@@ -3,11 +3,14 @@
 import { Cron } from "croner";
 import type { FastifyBaseLogger } from "fastify";
 import type { Log } from "../bot/bot.js";
+import { config } from "../config.js";
 import { runCleanup } from "./cleanup.js";
-import { runPaymentJobs } from "./payments.js";
+import { runMonthlyBilling, runMonthlyReminder, runPaymentJobs } from "./payments.js";
 import { runDailyParentReports, runMonthlyReports } from "./reports.js";
 
-export { runCleanup, runPaymentJobs, runDailyParentReports, runMonthlyReports };
+export { runCleanup, runMonthlyBilling, runMonthlyReminder, runPaymentJobs, runDailyParentReports, runMonthlyReports };
+
+const DUE_DAY = config.PAYMENT_DUE_DAY;
 
 export const TZ = "Asia/Tashkent";
 
@@ -16,6 +19,8 @@ type Job = { pattern: string; at: string; description: string; run: (now: Date, 
 export const JOBS: Record<string, Job> = {
   "daily-report": { pattern: "30 20 * * *", at: "20:30", description: "Ota-onalarga kunlik hisobot", run: runDailyParentReports },
   "monthly-report": { pattern: "0 10 1 * *", at: "10:00", description: "Oylik hisobot (ota-ona + admin)", run: runMonthlyReports },
+  billing: { pattern: "0 9 1 * *", at: "1-sana 09:00", description: "Oylik hisoblar (avtomatik)", run: runMonthlyBilling },
+  "payment-reminder": { pattern: `0 10 ${DUE_DAY} * *`, at: `${DUE_DAY}-sana 10:00`, description: "Oylik toʻlov eslatmasi (Telegram)", run: runMonthlyReminder },
   payments: { pattern: "0 10 * * *", at: "10:00", description: "Toʻlov eslatmasi va muddati oʻtganlar", run: runPaymentJobs },
   cleanup: { pattern: "0 3 * * *", at: "03:00", description: "Eski sessiya va ulash kodlarini tozalash", run: runCleanup },
 };
@@ -37,6 +42,9 @@ async function runLogged(name: string, log: Log, now = new Date()) {
 async function catchUp(log: Log) {
   const local = new Date(Date.now() + 5 * 3_600_000);
   const hm = local.getUTCHours() * 60 + local.getUTCMinutes();
+  const day = local.getUTCDate();
+  if (day === 1 && hm >= 9 * 60) await runLogged("billing", log);
+  if (day === DUE_DAY && hm >= 10 * 60 && hm < 20 * 60) await runLogged("payment-reminder", log);
   if (hm >= 20 * 60 + 30) await runLogged("daily-report", log);
   if (hm >= 10 * 60 && hm < 20 * 60) await runLogged("payments", log);
   if (local.getUTCDate() === 1 && hm >= 10 * 60) await runLogged("monthly-report", log);

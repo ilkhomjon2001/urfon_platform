@@ -224,15 +224,25 @@ async function monthlyAdminReport(from: Date, to: Date, period: string, log: Log
     prisma.studentProfile.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.studentProfile.count({ where: { enrolledAt: dateRange } }),
     prisma.studentProfile.count({ where: { leftAt: dateRange } }),
-    prisma.payment.groupBy({ by: ["status"], where: { period }, _sum: { amount: true }, _count: { _all: true } }),
-    prisma.payment.aggregate({ where: { status: "PAID", paidAt: inMonth }, _sum: { amount: true }, _count: { _all: true } }),
-    prisma.payment.aggregate({ where: { status: "OVERDUE" }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.payment.groupBy({ by: ["status"], where: { period }, _sum: { amount: true, paidAmount: true }, _count: { _all: true } }),
+    // oy ichida kassaga kelgan pul — tushumlar (storno qilinganlarsiz)
+    prisma.paymentTransaction.aggregate({ where: { reversedAt: null, paidAt: inMonth }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.payment.aggregate({ where: { status: "OVERDUE" }, _sum: { amount: true, paidAmount: true }, _count: { _all: true } }),
     prisma.attendance.findMany({ where: { lesson: { startsAt: inMonth } }, select: { status: true } }),
     prisma.lesson.count({ where: { startsAt: inMonth, status: { not: "CANCELLED" } } }),
   ]);
   const st = Object.fromEntries(byStatus.map((r) => [r.status, r._count._all])) as Record<string, number>;
-  const pay = Object.fromEntries(payments.map((r) => [r.status, { count: r._count._all, amount: r._sum.amount ?? 0 }])) as Record<string, { count: number; amount: number }>;
-  const p = (k: string) => pay[k] ?? { count: 0, amount: 0 };
+  const pay = Object.fromEntries(
+    payments.map((r) => [r.status, { count: r._count._all, amount: r._sum.amount ?? 0, paid: r._sum.paidAmount ?? 0 }]),
+  ) as Record<string, { count: number; amount: number; paid: number }>;
+  const raw = (k: string) => pay[k] ?? { count: 0, amount: 0, paid: 0 };
+  // davr boʻyicha: toʻlangan = toʻliq + qisman; kutilmoqda / muddati oʻtgan — toʻlanmagan qism
+  const periodPay = {
+    PAID: { count: raw("PAID").count, amount: raw("PAID").amount + raw("PENDING").paid + raw("OVERDUE").paid },
+    PENDING: { count: raw("PENDING").count, amount: raw("PENDING").amount - raw("PENDING").paid },
+    OVERDUE: { count: raw("OVERDUE").count, amount: raw("OVERDUE").amount - raw("OVERDUE").paid },
+  };
+  const p = (k: keyof typeof periodPay) => periodPay[k];
   const rate = attendanceRate(att);
 
   const payload = {
@@ -241,7 +251,7 @@ async function monthlyAdminReport(from: Date, to: Date, period: string, log: Log
     payments: {
       period: { paid: p("PAID"), pending: p("PENDING"), overdue: p("OVERDUE") },
       collectedInMonth: { count: collected._count._all, amount: collected._sum.amount ?? 0 },
-      overdueNow: { count: overdueNow._count._all, amount: overdueNow._sum.amount ?? 0 },
+      overdueNow: { count: overdueNow._count._all, amount: (overdueNow._sum.amount ?? 0) - (overdueNow._sum.paidAmount ?? 0) },
     },
     attendance: rate ? { percent: Math.round(rate.percent * 10) / 10, came: rate.came, total: rate.total } : null,
     lessonsHeld,

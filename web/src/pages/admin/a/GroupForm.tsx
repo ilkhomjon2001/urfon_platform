@@ -34,7 +34,7 @@ const empty = (): FormState => ({
   startTime: "14:00",
   endTime: "15:30",
   capacity: "16",
-  monthlyFee: "850000",
+  monthlyFee: "200000",
   startDate: todayYmd(),
   totalLessons: "48",
   status: "ENROLLING",

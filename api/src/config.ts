@@ -24,6 +24,8 @@ const schema = z.object({
   TELEGRAM_BOT_USERNAME: z.string().optional().default("urfon_bot"),
   TURNSTILE_API_KEY: z.string().optional().default(""), // bo'sh bo'lsa /api/integrations/turnstile → 404
   TZ_OFFSET: z.string().default("+05:00"), // Asia/Tashkent
+  // Oylik to'lov muddati (oyning shu kunigacha). 1-sanada hisob yaratiladi, shu kuni ota-onaga eslatma ketadi.
+  PAYMENT_DUE_DAY: z.coerce.number().int().min(1).max(28).default(5),
   // Ishonchli proxy manzillari (proxy-addr formati). API to'g'ridan-to'g'ri internetga ochilsa: "false"
   TRUST_PROXY: z
     .string()

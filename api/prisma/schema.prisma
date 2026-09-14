@@ -66,6 +66,9 @@ model User {
   attendanceMarks Attendance[]        @relation("AttendanceMarkedBy")
   topicsAuthored  Topic[]
   paymentsCreated Payment[]           @relation("PaymentCreatedBy")
+  paymentTxs      PaymentTransaction[] @relation("TxStudent")
+  paymentTxsMade  PaymentTransaction[] @relation("TxCreatedBy")
+  paymentTxsVoid  PaymentTransaction[] @relation("TxReversedBy")
   coinsGiven      CoinTransaction[]   @relation("CoinGivenBy")
 
   @@index([role])
@@ -602,6 +605,7 @@ model Payment {
   groupId     String?
   period      String // "2024-05"
   amount      Int // so'm
+  paidAmount  Int            @default(0) // shu hisobga taqsimlangan tushumlar (qisman to'lov); PAID ⇔ paidAmount = amount
   status      PaymentStatus  @default(PENDING)
   dueDate     DateTime       @db.Date
   paidAt      DateTime?
@@ -614,9 +618,49 @@ model Payment {
   student     User           @relation("PaymentStudent", fields: [studentId], references: [id], onDelete: Cascade)
   group       Group?         @relation(fields: [groupId], references: [id])
   createdBy   User?          @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  allocations PaymentAllocation[]
 
   @@index([studentId, period])
   @@index([status, dueDate])
+}
+
+// Kassaga kelgan pul (tushum). Oyga bog'lanmaydi: eng eski ochiq hisobdan boshlab taqsimlanadi,
+// ortig'i avans bo'lib qoladi va keyingi hisob yaratilganda avtomatik yopiladi (lib/billing.ts).
+// Bekor qilish — storno: yozuv o'chirilmaydi, reversedAt belgilanadi va taqsimotlar hisobdan qaytariladi.
+model PaymentTransaction {
+  id            String              @id @default(cuid())
+  studentId     String
+  amount        Int // so'm, > 0
+  method        PaymentMethod
+  paidAt        DateTime
+  receiptNo     String              @unique // "KV-2026-09-0001"
+  note          String?
+  createdById   String?
+  createdAt     DateTime            @default(now())
+  reversedAt    DateTime?
+  reversedById  String?
+  reverseReason String?
+  student       User                @relation("TxStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy     User?               @relation("TxCreatedBy", fields: [createdById], references: [id])
+  reversedBy    User?               @relation("TxReversedBy", fields: [reversedById], references: [id])
+  allocations   PaymentAllocation[]
+
+  @@index([studentId, paidAt])
+  @@index([paidAt])
+}
+
+// Tushumning qaysi oylik hisobni qancha yopgani. Storno bo'lsa ham tarix sifatida qoladi (tranzaksiya reversedAt bilan).
+model PaymentAllocation {
+  id            String             @id @default(cuid())
+  transactionId String
+  paymentId     String
+  amount        Int
+  createdAt     DateTime           @default(now())
+  transaction   PaymentTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  payment       Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([transactionId])
 }
 
 // ─────────────────────────── Gamifikatsiya ───────────────────────────

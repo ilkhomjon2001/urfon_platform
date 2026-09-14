@@ -5,6 +5,7 @@
 import type { AttendanceStatus, LessonStatus, Role, SubmissionStatus } from "@prisma/client";
 import { prisma } from "../db.js";
 import { studentGroupIds } from "../lib/access.js";
+import { studentBalance } from "../lib/billing.js";
 import { addDays, endOfDayTz, periodOf, startOfDayTz, startOfWeekTz, ymdTz } from "../lib/dates.js";
 import { coinTitle } from "../config/gamification.js";
 import {
@@ -162,7 +163,7 @@ export async function renderPayments(studentId: string, heading: string, now = n
   const rows = await prisma.payment.findMany({
     where: { studentId, status: { not: "CANCELLED" }, OR: [{ period }, { status: { in: ["PENDING", "OVERDUE"] } }] },
     orderBy: [{ dueDate: "asc" }],
-    select: { period: true, amount: true, status: true, dueDate: true, paidAt: true, group: { select: { name: true } } },
+    select: { period: true, amount: true, paidAmount: true, status: true, dueDate: true, paidAt: true, group: { select: { name: true } } },
   });
   const out = [heading];
   if (!rows.length) out.push(`${fmtPeriod(period)} uchun toʻlov yozuvi yoʻq.`);
@@ -170,14 +171,18 @@ export async function renderPayments(studentId: string, heading: string, now = n
   const todayCol = new Date(`${ymdTz(now)}T00:00:00Z`); // dueDate — @db.Date (UTC yarim tun)
   for (const p of rows) {
     let state: string;
+    const left = p.amount - p.paidAmount;
     if (p.status === "PAID") state = `toʻlangan${p.paidAt ? ` (${fmtDate(p.paidAt)})` : ""}`;
     else if (p.status === "OVERDUE" || p.dueDate < todayCol) state = `muddati oʻtgan (${fmtDbDate(p.dueDate)})`;
     else state = `kutilmoqda, muddati ${fmtDbDate(p.dueDate)}`;
-    if (p.status === "PENDING" || p.status === "OVERDUE") due += p.amount;
+    if (p.status !== "PAID" && p.paidAmount > 0) state += `; ${fmtMoney(p.paidAmount)} toʻlangan, qoldiq ${fmtMoney(left)}`;
+    if (p.status === "PENDING" || p.status === "OVERDUE") due += left;
     out.push(`• ${fmtPeriod(p.period)}${p.group ? ` · ${esc(p.group.name)}` : ""} — ${fmtMoney(p.amount)}, ${state}`);
   }
+  const { advance } = await studentBalance(prisma, studentId);
   if (due > 0) out.push("", `Toʻlanishi kerak: <b>${fmtMoney(due)}</b>`);
   else if (rows.length) out.push("", "Qarzdorlik yoʻq.");
+  if (advance > 0) out.push(`Avans (keyingi oylar uchun): ${fmtMoney(advance)}`);
   return out.join("\n");
 }
 

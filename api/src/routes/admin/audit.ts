@@ -91,12 +91,14 @@ async function entityLabels(items: { entityType: string; entityId: string | null
   const payIds = ids(["Payment"]);
   const gradeIds = ids(["Grade"]);
   const hwIds = ids(["Homework"]);
-  const [users, groups, pays, grades, hws] = await Promise.all([
+  const txIds = ids(["PaymentTransaction"]);
+  const [users, groups, pays, grades, hws, txs] = await Promise.all([
     userIds.length ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, fullName: true, studentProfile: { select: { code: true } } } }) : [],
     groupIds.length ? prisma.group.findMany({ where: { id: { in: groupIds } }, select: { id: true, name: true } }) : [],
     payIds.length ? prisma.payment.findMany({ where: { id: { in: payIds } }, select: { id: true, receiptNo: true, student: { select: { fullName: true } } } }) : [],
     gradeIds.length ? prisma.grade.findMany({ where: { id: { in: gradeIds } }, select: { id: true, student: { select: { fullName: true, studentProfile: { select: { code: true } } } } } }) : [],
     hwIds.length ? prisma.homework.findMany({ where: { id: { in: hwIds } }, select: { id: true, title: true } }) : [],
+    txIds.length ? prisma.paymentTransaction.findMany({ where: { id: { in: txIds } }, select: { id: true, receiptNo: true, student: { select: { fullName: true } } } }) : [],
   ]);
   const m = new Map<string, { label: string; sub: string | null }>();
   for (const u of users) m.set(u.id, { label: u.fullName, sub: u.studentProfile ? `#${u.studentProfile.code}` : null });
@@ -104,6 +106,7 @@ async function entityLabels(items: { entityType: string; entityId: string | null
   for (const p of pays) m.set(p.id, { label: `Toʻlov — ${p.student.fullName}`, sub: p.receiptNo });
   for (const g of grades) m.set(g.id, { label: `Baho — ${g.student.fullName}`, sub: g.student.studentProfile ? `#${g.student.studentProfile.code}` : null });
   for (const h of hws) m.set(h.id, { label: `Uyga vazifa: ${h.title}`, sub: null });
+  for (const t of txs) m.set(t.id, { label: `Tushum — ${t.student.fullName}`, sub: t.receiptNo });
   return m;
 }
 

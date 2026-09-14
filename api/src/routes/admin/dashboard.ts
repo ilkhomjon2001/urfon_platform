@@ -60,8 +60,8 @@ export default async function dashboard(app: FastifyInstance) {
           attendance: { select: { status: true } },
         },
       }),
-      prisma.payment.groupBy({ by: ["status"], where: { period }, _sum: { amount: true }, _count: { _all: true } }),
-      prisma.payment.findMany({ where: { status: "OVERDUE" }, select: { amount: true, dueDate: true, studentId: true } }),
+      prisma.payment.groupBy({ by: ["status"], where: { period }, _sum: { amount: true, paidAmount: true }, _count: { _all: true } }),
+      prisma.payment.findMany({ where: { status: "OVERDUE" }, select: { amount: true, paidAmount: true, dueDate: true, studentId: true } }),
       prisma.groupStudent.findMany({
         where: { status: "ACTIVE", group: { status: { in: BUSY_STATUSES } } },
         select: { group: { select: { monthlyFee: true } } },
@@ -94,7 +94,7 @@ export default async function dashboard(app: FastifyInstance) {
         take: 8,
         select: { id: true, at: true, action: true, entityType: true, entityId: true, summary: true, actor: { select: { fullName: true, role: true } } },
       }),
-      prisma.payment.groupBy({ by: ["period", "status"], where: { period: { in: periods } }, _sum: { amount: true } }),
+      prisma.payment.groupBy({ by: ["period", "status"], where: { period: { in: periods } }, _sum: { amount: true, paidAmount: true } }),
       prisma.attendance.findMany({
         where: { lesson: { startsAt: { gte: addDays(startOfWeekTz(now), -7 * 7), lte: now } } },
         select: { status: true, lesson: { select: { startsAt: true } } },
@@ -125,9 +125,11 @@ export default async function dashboard(app: FastifyInstance) {
 
     // ── To'lovlar ──
     const pay = (s: string) => payAgg.find((p) => p.status === s);
-    const collected = pay("PAID")?._sum.amount ?? 0;
+    // yigʻilgan = toʻliq toʻlangan hisoblar + ochiq hisoblardagi qisman toʻlovlar; kutilmoqda/qarz — toʻlanmagan qism
+    const collected = (pay("PAID")?._sum.amount ?? 0) + (pay("PENDING")?._sum.paidAmount ?? 0) + (pay("OVERDUE")?._sum.paidAmount ?? 0);
+    const unpaid = (s: string) => (pay(s)?._sum.amount ?? 0) - (pay(s)?._sum.paidAmount ?? 0);
     const plan = planRows.reduce((s, r) => s + r.group.monthlyFee, 0);
-    const overdueSum = overdueRows.reduce((s, r) => s + r.amount, 0);
+    const overdueSum = overdueRows.reduce((s, r) => s + r.amount - r.paidAmount, 0);
     const oldestDue = overdueRows.reduce<Date | null>((m, r) => (!m || r.dueDate < m ? r.dueDate : m), null);
 
     // ── Guruhlar ──
@@ -265,8 +267,12 @@ export default async function dashboard(app: FastifyInstance) {
     const revenue = periods.map((p) => {
       const rows = revenueRows.filter((r) => r.period === p);
       const s = (st: string) => rows.find((r) => r.status === st)?._sum.amount ?? 0;
+      const pd = (st: string) => rows.find((r) => r.status === st)?._sum.paidAmount ?? 0;
       const m = Number(p.slice(5)) - 1;
-      return { period: p, label: MONTH_SHORT[m], collected: s("PAID"), pending: s("PENDING"), overdue: s("OVERDUE") };
+      return {
+        period: p, label: MONTH_SHORT[m],
+        collected: s("PAID") + pd("PENDING") + pd("OVERDUE"), pending: s("PENDING") - pd("PENDING"), overdue: s("OVERDUE") - pd("OVERDUE"),
+      };
     });
     const weekStart = startOfWeekTz(now);
     const trend = Array.from({ length: 8 }, (_, i) => {
@@ -334,7 +340,7 @@ export default async function dashboard(app: FastifyInstance) {
           collectedCount: pay("PAID")?._count._all ?? 0,
           plan,
           planPct: pct(collected, plan),
-          pending: pay("PENDING")?._sum.amount ?? 0,
+          pending: unpaid("PENDING"),
           pendingCount: pay("PENDING")?._count._all ?? 0,
           overdue: overdueSum,
           overdueCount: overdueRows.length,
