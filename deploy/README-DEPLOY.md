@@ -68,6 +68,20 @@ Quyidagilarni toʻldiring:
 >
 > `POSTGRES_PASSWORD` baza **birinchi marta** yaratilganda qoʻllanadi. Uni keyin oʻzgartirish uchun baza ichida `ALTER USER urfon PASSWORD '…'` buyrugʻini bajarib, `.env` ni ham yangilash kerak.
 
+### 3a. Umumiy server (80/443 boshqa xizmat bilan band, domen yoʻq)
+
+Joriy URFON serveri shu rejimda ishlaydi: `/opt/urfon-platforma`, `http://169.58.130.201:4900`. Oʻz Caddy'miz ishga tushmaydi, ilova toʻgʻridan-toʻgʻri portda ochiladi:
+
+```
+APP_ORIGIN=http://SERVER_IP:4900
+APP_BIND=0.0.0.0
+APP_PORT=4900
+TRUST_PROXY=false
+COMPOSE_PROFILES=
+```
+
+`APP_ORIGIN` `http://` bilan boshlansa, Secure cookie va HSTS avtomatik oʻchadi, aks holda brauzer sessiyani saqlamaydi. Domen olingach, uni mavjud reverse proxy'ga (masalan, serverdagi boshqa Caddy) `127.0.0.1:4900` ga yoʻnaltiring, `APP_ORIGIN=https://domen` qiling va `docker compose up -d` ni bajaring.
+
 ## 4. Ishga tushirish
 
 ```bash
