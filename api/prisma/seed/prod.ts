@@ -4,7 +4,8 @@
 import { prisma } from "../../src/db.js";
 import { writeAudit } from "../../src/lib/audit.js";
 import { hashPassword, passwordRule } from "../../src/lib/password.js";
-import { BRANCH, LEVELS, ROOMS } from "./data/canon.js";
+import { BRANCH, ROOMS } from "./data/canon.js";
+import { CURRICULUM } from "./data/curriculum.js";
 
 function fail(msg: string): never {
   console.error(`✗ ${msg}`);
@@ -49,7 +50,8 @@ async function main() {
     }
   }
   // leveller
-  for (const l of LEVELS) await prisma.level.upsert({ where: { code: l.code }, create: { code: l.code, name: l.name, order: l.order }, update: {} });
+  // URFON oʻquv dasturi levellari (unitlari: npm run curriculum:import -w api)
+  for (const l of CURRICULUM) await prisma.level.upsert({ where: { code: l.code }, create: { code: l.code, name: l.name, order: l.order }, update: {} });
 
   // admin
   const existing = await prisma.user.findUnique({ where: { login } });

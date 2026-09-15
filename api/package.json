@@ -14,6 +14,7 @@
     "db:seed:prod": "tsx prisma/seed/prod.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "job": "tsx scripts/run-job.ts",
+    "curriculum:import": "tsx scripts/import-curriculum.ts",
     "bot:selftest": "tsx scripts/bot-selftest.ts",
     "prisma:generate": "prisma generate"
   },
