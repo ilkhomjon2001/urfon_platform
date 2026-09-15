@@ -129,7 +129,9 @@ export default async function grades(app: FastifyInstance) {
     // Level xaritasi (faqat farzandning o'z yo'li)
     const curLevel = primary?.level ?? null;
     const progress = primary ? Math.min(100, Math.round((doneInGroup / Math.max(1, primary.totalLessons)) * 100)) : 0;
-    const path = curLevel?.code === "KIDS" ? levels.filter((l) => l.code === "KIDS") : levels.filter((l) => l.code !== "KIDS");
+    // 8–12 yosh yoʻnalishi (K1, K2 …) va 13–16 yosh yoʻnalishi (L1–L6, CEFR, IELTS) alohida zinapoya
+    const isKids = (code: string) => /^(KIDS|K\d+)$/.test(code);
+    const path = curLevel && isKids(curLevel.code) ? levels.filter((l) => isKids(l.code)) : levels.filter((l) => !isKids(l.code));
     const levelMap = path.map((l) => {
       const state = !curLevel
         ? "PLANNED"

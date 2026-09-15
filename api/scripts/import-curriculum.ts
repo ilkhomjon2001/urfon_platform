@@ -5,6 +5,7 @@
 //   • dasturda yoʻq eski level — guruh ham, unit ham bogʻlanmagan boʻlsa oʻchiriladi, aks holda qoldiriladi (hisobotda koʻrinadi).
 // Ishlatish: npm run curriculum:import -w api            (production: docker compose exec app npm run curriculum:import -w api)
 //            npm run curriculum:import -w api -- --dry   (faqat nima oʻzgarishini koʻrsatadi)
+import { Prisma } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { writeAudit } from "../src/lib/audit.js";
 import { CURRICULUM } from "../prisma/seed/data/curriculum.js";
@@ -41,6 +42,7 @@ async function main() {
         grammar: u.grammar,
         lessonsCount: u.lessonsCount,
         hours: u.hours,
+        lessonPlan: u.lessonPlan?.length ? (u.lessonPlan as Prisma.InputJsonValue) : Prisma.DbNull,
         status: "PUBLISHED" as const,
       };
       const cur = byUnit.get(u.unit);

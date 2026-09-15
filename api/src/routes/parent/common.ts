@@ -152,7 +152,7 @@ export function childHomeworkWhere(child: Child, extra: Prisma.HomeworkWhereInpu
  * Markaz Mock imtihonlari IELTS yo'nalishi uchun — Kids guruhidagi bolaga ko'rsatilmaydi.
  */
 export function childExamWhere(child: Child): Prisma.ExamWhereInput {
-  const kids = child.primaryGroup?.level?.code === "KIDS";
+  const kids = /^(KIDS|K\d+)$/.test(child.primaryGroup?.level?.code ?? "");
   return { OR: [{ groupId: { in: child.activeGroupIds } }, ...(kids ? [] : [{ groupId: null }])] };
 }
 

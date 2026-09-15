@@ -1,5 +1,6 @@
 // Admin: Mavzular bazasi (o'quv dasturi / sillabus). Ustozlar dars o'tganda faqat PUBLISHED mavzularni tanlaydi.
 import type { FastifyInstance } from "fastify";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db.js";
 import { writeAudit } from "../../lib/audit.js";
@@ -187,6 +188,7 @@ export default async function curriculum(app: FastifyInstance) {
         grammar: t.grammar,
         lessonsCount: t.lessonsCount,
         hours: t.hours,
+        lessonPlan: t.lessonPlan,
         status: t.status,
         available: t.status === "PUBLISHED",
         author: t.author,
@@ -317,7 +319,7 @@ export default async function curriculum(app: FastifyInstance) {
         data: {
           levelId: t.levelId, unit: (max._max.unit ?? 0) + 1, title: `${t.title} (nusxa)`.slice(0, 160),
           description: t.description, objectives: t.objectives, vocabulary: t.vocabulary, grammar: t.grammar,
-          lessonsCount: t.lessonsCount, hours: t.hours, status: "DRAFT", authorId: req.auth.userId,
+          lessonsCount: t.lessonsCount, hours: t.hours, lessonPlan: t.lessonPlan ?? Prisma.DbNull, status: "DRAFT", authorId: req.auth.userId,
         },
       });
       await writeAudit(tx, {

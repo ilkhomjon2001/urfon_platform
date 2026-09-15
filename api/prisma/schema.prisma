@@ -184,6 +184,7 @@ model Topic {
   grammar      String?
   lessonsCount Int           @default(4)
   hours        Float         @default(6)
+  lessonPlan   Json? // darsma-dars reja: [{ focus, sb, steps[], homework }] — faqat ustoz va admin koʻradi
   status       TopicStatus   @default(PUBLISHED)
   authorId     String?
   createdAt    DateTime      @default(now())

@@ -255,6 +255,14 @@ export interface LessonMaterial {
   createdAt: ISODate;
 }
 
+/** Darsma-dars reja (Mavzular bazasi → unit.lessonPlan) */
+export interface PlanLesson {
+  focus: string;
+  sb: string;
+  steps: string[];
+  homework: string;
+}
+
 export interface LessonResponse {
   lesson: {
     id: string;
@@ -285,7 +293,16 @@ export interface LessonResponse {
   };
   students: LessonStudent[];
   counts: { total: number; present: number; late: number; excused: number; absent: number; unmarked: number };
-  topics: (TopicLite & { description: string | null; grammar: string | null; vocabulary: string[]; objectives: string[] })[];
+  topics: (TopicLite & {
+    description: string | null;
+    grammar: string | null;
+    vocabulary: string[];
+    objectives: string[];
+    lessonsCount: number;
+    lessonPlan: PlanLesson[] | null;
+    /** bu dars unitning nechanchi darsi (1 dan) */
+    part: number;
+  })[];
   availableTopics: AvailableTopic[];
   suggestedTopicId: string | null;
   lastTopic: (TopicLite & { lessonId: string; startsAt: ISODate }) | null;

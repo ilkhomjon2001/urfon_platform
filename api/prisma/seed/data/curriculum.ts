@@ -1,9 +1,11 @@
 // URFON ingliz tili oʻquv dasturi (Mavzular bazasi uchun maʼlumot).
 // Manba: URFON oʻquv dasturi taklifi, 2026-09-15 (egasi tomonidan tasdiqlangan).
 // Format: 1 unit = 1 hafta = 3 dars × 1,5 soat (lessonsCount 3, hours 4.5).
-// Yosh guruhlari: 8–12 (Cambridge Power Up) va 13–16 (Cambridge Prepare 2e) — mavzular ikkala guruh uchun umumiy.
-// Takrorlash, test va loyiha darslari unit hisoblanmaydi va bu yerga kiritilmagan.
+// Yosh guruhlari: 8–12 va 13–16 — ikkalasi ham Cambridge Prepare 2e da; 8–12 yosh sekinroq (K-levellar).
+// L1, L2, K1, K2 — Prepare 2e Level 1 asosida, darsma-dars reja bilan (./prepare1.ts, 2026-09-16);
+// L3–L6, CEFR, IELTS — umumiy mavzular (keyingi kitoblar olingach Prepare asosida yangilanadi).
 // Til: title/description/objectives — oʻzbekcha (lotin), vocabulary/grammar — inglizcha.
+import { PREPARE1 } from "./prepare1.js";
 
 export type CurriculumUnit = {
   unit: number;
@@ -14,6 +16,8 @@ export type CurriculumUnit = {
   grammar: string;
   lessonsCount: number;
   hours: number;
+  /** darsma-dars reja (faqat ustoz va admin koʻradi) */
+  lessonPlan?: { focus: string; sb: string; steps: string[]; homework: string }[];
 };
 
 export type CurriculumLevel = {
@@ -1053,4 +1057,39 @@ const IELTS: CurriculumLevel = {
   ],
 };
 
-export const CURRICULUM: CurriculumLevel[] = [L1, L2, L3, L4, L5, L6, CEFR, IELTS];
+// ─── Prepare 2e Level 1 (A1) asosidagi levellar (2026-09-16) ───
+// Kitob ikki levelga boʻlinadi: 0–10-unitlar va 11–20-unitlar. 13–16 yosh — L1/L2 (unit ≈ 2 dars, level ≈ 10 hafta),
+// 8–12 yosh — K1/K2 (unit ≈ 3 dars + oʻyin va takror, level 3 oydan ortiq). Darsma-dars reja — ./prepare1.ts.
+function fromPrepare1(code: string, name: string, order: number, cefr: string, track: "teen" | "kids", from: number, to: number): CurriculumLevel {
+  const units = PREPARE1.units
+    .filter((u) => u.unit >= from && u.unit <= to)
+    .map((u): CurriculumUnit => {
+      const plan = track === "teen" ? u.teen : u.kids;
+      return {
+        unit: u.unit,
+        title: u.title,
+        description: u.description,
+        objectives: u.objectives,
+        vocabulary: u.vocabulary,
+        grammar: u.grammar,
+        lessonsCount: plan.length,
+        hours: plan.length * 1.5,
+        lessonPlan: plan,
+      };
+    });
+  const lessons = units.reduce((s, u) => s + u.lessonsCount, 0);
+  return { code, name, order, cefr, weeks: Math.ceil(lessons / 3), units };
+}
+
+export const CURRICULUM: CurriculumLevel[] = [
+  fromPrepare1("L1", L1.name, 1, "Pre-A1 → A1 · Prepare 1, 0–10-unit", "teen", 0, 10),
+  fromPrepare1("L2", L2.name, 2, "A1 · Prepare 1, 11–20-unit", "teen", 11, 20),
+  L3,
+  L4,
+  L5,
+  L6,
+  fromPrepare1("K1", `Kids 1 · ${L1.name}`, 7, "Pre-A1 → A1 · Prepare 1, 0–10-unit (8–12 yosh)", "kids", 0, 10),
+  fromPrepare1("K2", `Kids 2 · ${L2.name}`, 8, "A1 · Prepare 1, 11–20-unit (8–12 yosh)", "kids", 11, 20),
+  { ...CEFR, order: 9 },
+  { ...IELTS, order: 10 },
+];

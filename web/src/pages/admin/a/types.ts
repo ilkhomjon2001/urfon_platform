@@ -267,6 +267,8 @@ export interface TopicRow {
   grammar: string | null;
   lessonsCount: number;
   hours: number;
+  /** darsma-dars reja: [{ focus, sb, steps[], homework }] */
+  lessonPlan: { focus: string; sb: string; steps: string[]; homework: string }[] | null;
   status: TopicStatus;
   available: boolean;
   author: { id: string; fullName: string; title: string | null } | null;

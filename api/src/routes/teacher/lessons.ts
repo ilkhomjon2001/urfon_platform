@@ -98,7 +98,11 @@ export default async function lessons(app: FastifyInstance) {
       include: {
         room: true,
         group: { include: { level: true, room: true } },
-        topics: { include: { topic: { select: { id: true, unit: true, title: true, description: true, grammar: true, vocabulary: true, objectives: true } } } },
+        topics: {
+          include: {
+            topic: { select: { id: true, unit: true, title: true, description: true, grammar: true, vocabulary: true, objectives: true, lessonsCount: true, lessonPlan: true } },
+          },
+        },
         attendance: { include: { markedBy: { select: { id: true, fullName: true } } } },
         grades: { orderBy: { gradedAt: "asc" } },
         materials: {
@@ -199,7 +203,8 @@ export default async function lessons(app: FastifyInstance) {
       covered: coveredBy.has(t.id),
       lastCoveredAt: coveredBy.get(t.id)?.lastAt ?? null,
     }));
-    const suggested = availableTopics.find((t) => !t.covered) ?? null;
+    // Unit bir necha darsdan iborat boʻlishi mumkin (lessonsCount): tavsiya — darslari hali tugamagan birinchi unit
+    const suggested = availableTopics.find((t) => t.coveredLessons < Math.max(1, t.lessonsCount)) ?? null;
     const lastTopics = (lastDone?.topics ?? []).map((t) => t.topic).sort((a, b) => a.unit - b.unit);
     const t = timing(l, now);
 
@@ -231,7 +236,10 @@ export default async function lessons(app: FastifyInstance) {
       },
       students,
       counts,
-      topics: l.topics.map((lt) => lt.topic).sort((a, b) => a.unit - b.unit),
+      // part — bu dars unitning nechanchi darsi (dars rejasidagi qaysi band koʻrsatiladi)
+      topics: l.topics
+        .map((lt) => ({ ...lt.topic, part: coveredRows.filter((r) => r.topicId === lt.topic.id && r.lesson.startsAt < l.startsAt).length + 1 }))
+        .sort((a, b) => a.unit - b.unit),
       availableTopics,
       suggestedTopicId: suggested?.id ?? null,
       lastTopic: lastTopics.length ? { ...lastTopics[lastTopics.length - 1], lessonId: lastDone!.id, startsAt: lastDone!.startsAt } : null,

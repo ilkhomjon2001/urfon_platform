@@ -438,6 +438,35 @@ export default function AdminCurriculumPage() {
   );
 }
 
+/** Unitning darsma-dars rejasi (Prepare 2e asosida) — ochiladigan roʻyxat. */
+function PlanDetails({ plan }: { plan: NonNullable<TopicRow["lessonPlan"]> }) {
+  return (
+    <details className="mt-2.5 rounded-lg bg-surface-container-low px-3 py-2 text-body-sm">
+      <summary className="cursor-pointer font-label-md text-label-md text-on-surface">Dars rejasi · {plan.length} dars</summary>
+      <ol className="mt-2 flex flex-col gap-2.5">
+        {plan.map((p, i) => (
+          <li key={i} className="flex flex-col gap-0.5">
+            <span className="font-semibold text-on-surface">
+              {i + 1}-dars · {p.focus}
+              {p.sb && p.sb !== "—" ? <span className="font-normal tabular-nums text-on-surface-variant"> · SB {p.sb}</span> : null}
+            </span>
+            <ul className="list-disc pl-5 text-on-surface-variant">
+              {p.steps.map((s, k) => (
+                <li key={k}>{s}</li>
+              ))}
+            </ul>
+            {p.homework ? (
+              <span className="text-on-surface-variant">
+                <b className="font-semibold text-on-surface">Uy vazifasi:</b> {p.homework}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
 function TopicCard({
   t, first, last, dragging, busy, onDragStart, onDragEnd, onDragOver, onDrop, onUp, onDown, onEdit, onDuplicate, onArchive, onRestore, onPublish, onUnpublish,
 }: {
@@ -527,6 +556,7 @@ function TopicCard({
             {t.vocabulary.length > 6 ? <span className="px-1 text-on-surface-muted">+{t.vocabulary.length - 6}</span> : null}
           </div>
         ) : null}
+        {t.lessonPlan?.length ? <PlanDetails plan={t.lessonPlan} /> : null}
         {live ? (
           <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-lg bg-surface-container-low p-2">
             <Icon name="record_voice_over" size={20} className="text-primary" />
