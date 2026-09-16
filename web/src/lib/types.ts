@@ -87,3 +87,23 @@ export interface FileMeta {
   size: number;
   createdAt?: ISODate;
 }
+
+// ─── Darsma-dars reja (Topic.lessonPlan) ───
+/** Dars ichidagi bitta bosqich: nomi, necha daqiqa va aniq qadamlar. */
+export interface PlanBlock {
+  title: string;
+  minutes: number;
+  points: string[];
+}
+
+/** Bitta darsning toʻliq rejasi. Bloklar yigʻindisi 90 daqiqa. */
+export interface PlanLesson {
+  focus: string;
+  sb: string;
+  maqsad: string[];
+  lugat: string[];
+  resurslar: string[];
+  blocks: PlanBlock[];
+  uyga: string[];
+  ustozga: string;
+}

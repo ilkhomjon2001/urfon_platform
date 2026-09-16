@@ -5,7 +5,7 @@
 // L1, L2, K1, K2 — Prepare 2e Level 1 asosida, darsma-dars reja bilan (./prepare1.ts, 2026-09-16);
 // L3–L6, CEFR, IELTS — umumiy mavzular (keyingi kitoblar olingach Prepare asosida yangilanadi).
 // Til: title/description/objectives — oʻzbekcha (lotin), vocabulary/grammar — inglizcha.
-import { PREPARE1 } from "./prepare1.js";
+import { PREPARE1, type PlanLesson } from "./prepare1.js";
 
 export type CurriculumUnit = {
   unit: number;
@@ -17,7 +17,7 @@ export type CurriculumUnit = {
   lessonsCount: number;
   hours: number;
   /** darsma-dars reja (faqat ustoz va admin koʻradi) */
-  lessonPlan?: { focus: string; sb: string; steps: string[]; homework: string }[];
+  lessonPlan?: PlanLesson[];
 };
 
 export type CurriculumLevel = {

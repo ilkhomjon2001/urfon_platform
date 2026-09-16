@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { LessonPlanToday } from "@/components/LessonPlanView";
 import {
   Alert,
   Avatar,
@@ -677,7 +678,7 @@ function TopicCard({ d, className }: { d: LessonResponse; className?: string }) 
                       <div className="font-label-lg text-label-lg text-on-surface">{topicText(t)}</div>
                       {t.grammar ? <div className="text-body-sm text-on-surface-variant">Grammar: {t.grammar}</div> : null}
                       {t.vocabulary.length ? <div className="line-clamp-2 text-body-sm text-on-surface-muted">Lugʻat: {t.vocabulary.slice(0, 8).join(", ")}</div> : null}
-                      {t.lessonPlan?.length ? <LessonPlanBlock plan={t.lessonPlan} part={t.part} /> : null}
+                      {t.lessonPlan?.length ? <LessonPlanToday plan={t.lessonPlan} part={t.part} /> : null}
                     </div>
                     <IconButton
                       icon="close"
@@ -764,44 +765,6 @@ function TopicCard({ d, className }: { d: LessonResponse; className?: string }) 
         )}
       </CardContent>
     </Card>
-  );
-}
-
-// ───────────── Dars rejasi (unit.lessonPlan): bugungi dars ajratilgan, qolganlari ochiladi ─────────────
-type PlanList = NonNullable<LessonResponse["topics"][number]["lessonPlan"]>;
-function LessonPlanBlock({ plan, part }: { plan: PlanList; part: number }) {
-  const [all, setAll] = useState(false);
-  const idx = Math.min(Math.max(part, 1), plan.length) - 1;
-  const shown = all ? plan.map((p, i) => ({ p, i })) : [{ p: plan[idx], i: idx }];
-  return (
-    <div className="mt-2 flex flex-col gap-2">
-      {shown.map(({ p, i }) => (
-        <div key={i} className={cn("rounded-lg border p-2.5", i === idx ? "border-primary/40 bg-surface-container-lowest" : "border-outline-variant/60 bg-surface-container-lowest/60")}>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-label-md text-label-md text-on-surface">
-              {i + 1}-dars · {p.focus}
-            </span>
-            {p.sb && p.sb !== "—" ? <span className="text-body-sm tabular-nums text-on-surface-variant">SB {p.sb}</span> : null}
-            {i === idx && part <= plan.length ? <Badge tone="primary">Shu dars</Badge> : null}
-          </div>
-          <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-body-sm text-on-surface-variant">
-            {p.steps.map((s, k) => (
-              <li key={k}>{s}</li>
-            ))}
-          </ol>
-          {p.homework ? (
-            <div className="mt-1 text-body-sm text-on-surface">
-              <b className="font-semibold">Uy vazifasi:</b> {p.homework}
-            </div>
-          ) : null}
-        </div>
-      ))}
-      {plan.length > 1 ? (
-        <Button variant="link" size="sm" className="self-start" onClick={() => setAll((v) => !v)}>
-          {all ? "Faqat shu dars" : `Unitning barcha darslari (${plan.length})`}
-        </Button>
-      ) : null}
-    </div>
   );
 }
 

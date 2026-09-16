@@ -1,5 +1,5 @@
 // admin-a sahifalari uchun API javob turlari (api/src/routes/admin/{groups,teachers,curriculum,lookups,dashboard}.ts).
-import type { ISODate, Paginated } from "@/lib/types";
+import type { ISODate, Paginated, PlanLesson } from "@/lib/types";
 
 export type GroupStatus = "ENROLLING" | "ACTIVE" | "FINISHED";
 export type EnrollmentStatus = "ACTIVE" | "WAITING" | "LEFT";
@@ -276,7 +276,7 @@ export interface TopicRow {
   lessonsCount: number;
   hours: number;
   /** darsma-dars reja: [{ focus, sb, steps[], homework }] */
-  lessonPlan: { focus: string; sb: string; steps: string[]; homework: string }[] | null;
+  lessonPlan: PlanLesson[] | null;
   status: TopicStatus;
   available: boolean;
   author: { id: string; fullName: string; title: string | null } | null;

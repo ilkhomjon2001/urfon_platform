@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Alert, Avatar, Badge, Button, buttonVariants, Card, ConfirmDialog, EmptyState, Icon, IconButton, PageHeader, ProgressBar, SearchInput, Skeleton,
+  Alert, Avatar, Badge, Button, buttonVariants, Card, ConfirmDialog, EmptyState, Field, Icon, IconButton, PageHeader, ProgressBar, SearchInput, Select, Skeleton,
 } from "@/components/ui";
+import { LessonPlanAll } from "@/components/LessonPlanView";
 import { useShellSearch } from "@/components/shell/ShellSearch";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -181,145 +182,110 @@ export default function AdminCurriculumPage() {
         </Alert>
       ) : null}
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
-        {/* ─── Chap ustun: bosqichlar ─── */}
-        <div className="flex min-w-0 flex-col gap-4 xl:col-span-4">
-          <Card className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div>
-                <div className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Struktura</div>
-                <h2 className="font-headline-md text-headline-md text-on-surface">Akademik bosqichlar</h2>
-              </div>
-              <Badge tone="neutral">{levels.length} ta level</Badge>
-            </div>
-            {levelsQ.isLoading ? (
-              <div className="flex flex-col gap-2">
-                {[0, 1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 w-full" />
-                ))}
-              </div>
-            ) : levelsQ.error ? (
-              <Alert tone="danger">{levelsQ.error.message}</Alert>
-            ) : (
-              <nav className="flex flex-col gap-1.5" aria-label="Leveller">
-                {levels.map((l) => {
-                  const active = l.id === levelId;
-                  return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => {
-                        setLevelParam(l.id);
-                        setQ(null);
-                      }}
-                      aria-current={active ? "true" : undefined}
-                      className={cn(
-                        "group flex items-center justify-between gap-3 rounded-lg p-2.5 text-left transition-all",
-                        active ? "bg-primary text-on-primary shadow-float" : "hover:bg-surface-container",
-                      )}
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span
-                          className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-display text-[12px] font-bold",
-                            active ? "bg-on-primary/15 text-on-primary" : "bg-surface-container text-on-surface-variant group-hover:bg-primary-fixed group-hover:text-primary",
-                          )}
-                        >
-                          {l.code.length <= 3 ? l.code : l.code.slice(0, 2)}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="flex items-center gap-1.5">
-                            <span className="truncate font-label-lg text-label-lg">{l.label ?? l.name}</span>
-                            {l.groupsCount ? <span className="h-2 w-2 shrink-0 rounded-full bg-gold" title="Faol guruhlar bor" /> : null}
-                          </span>
-                          <span className={cn("block truncate text-body-sm", active ? "text-on-primary/80" : "text-on-surface-variant")}>
-                            {[l.audience, l.cefr].filter(Boolean).join(" · ") || "Kimga moʻljallangani koʻrsatilmagan"}
-                          </span>
-                          <span className={cn("block truncate font-label-sm text-label-sm", active ? "text-on-primary/70" : "text-on-surface-muted")}>
-                            {l.topicsCount} ta mavzu · {fmtNum(l.lessons)} dars{l.materialsCount ? ` · ${l.materialsCount} ta resurs` : ""}
-                            {l.groupsCount ? ` · ${l.groupsCount} guruh` : ""}
-                          </span>
-                        </span>
-                      </span>
-                      <Icon name={active ? "arrow_forward" : "chevron_right"} size={18} className={active ? "text-on-primary" : "text-on-surface-variant"} />
-                    </button>
-                  );
-                })}
-              </nav>
-            )}
-            <Button variant="secondary" icon="add" block className="mt-3 text-primary" onClick={() => setLevelOpen(true)}>
-              Yangi bosqich yaratish
-            </Button>
-          </Card>
+      {/* ─── Bosqich tanlash ─── */}
+      <Card className="mb-4 flex flex-col gap-4 p-4 sm:p-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Akademik bosqich" className="min-w-[min(100%,280px)] flex-1">
+            <Select
+              value={levelId ?? ""}
+              onChange={(e) => {
+                setLevelParam(e.target.value);
+                setQ(null);
+              }}
+              disabled={levelsQ.isLoading || !levels.length}
+              placeholder={levelsQ.isLoading ? "Yuklanmoqda…" : "Bosqichni tanlang"}
+              options={levels.map((l) => ({
+                value: l.id,
+                label: `${l.label ?? l.name}${l.audience ? ` — ${l.audience}` : ""} · ${l.topicsCount} mavzu`,
+              }))}
+            />
+          </Field>
+          <Button variant="outline" icon="edit" onClick={() => level && setEditLevel(level)} disabled={!level}>
+            Tavsifni tahrirlash
+          </Button>
+          <Button variant="secondary" icon="add" className="text-primary" onClick={() => setLevelOpen(true)}>
+            Yangi bosqich
+          </Button>
+        </div>
 
-          {level ? (
-            <Card className="p-4 sm:p-5">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Tanlangan bosqich</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">{level.label ?? level.name}</h3>
-                </div>
-                <IconButton icon="edit" label="Bosqich tavsifini tahrirlash" size="sm" onClick={() => setEditLevel(level)} />
-              </div>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                <Badge tone="gold" icon="groups">
-                  {level.audience ?? "Yosh guruhi koʻrsatilmagan"}
+        {levelsQ.error ? <Alert tone="danger">{levelsQ.error.message}</Alert> : null}
+
+        {level ? (
+          <>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="gold" icon="groups">
+                {level.audience ?? "Yosh guruhi koʻrsatilmagan"}
+              </Badge>
+              {level.cefr ? <Badge tone="neutral">CEFR: {level.cefr}</Badge> : null}
+              {level.groupsCount ? (
+                <Badge tone="primary" icon="stars">
+                  {level.groups.map((g) => g.name).join(", ")}
                 </Badge>
-                {level.cefr ? <Badge tone="neutral">CEFR: {level.cefr}</Badge> : null}
-              </div>
-              {level.description ? (
-                <p className="mb-3 text-body-md leading-snug text-on-surface-variant">{level.description}</p>
               ) : (
-                <p className="mb-3 text-body-sm text-on-surface-muted">
-                  Bu bosqich nima oʻrgatishi yozilmagan. Qalamchani bosib tavsif qoʻshing — ustozlar va yangi xodimlar uchun ayni shu matn bosqichni tushuntiradi.
-                </p>
+                <Badge tone="neutral">Guruh yoʻq</Badge>
               )}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
-                  <span className="text-body-sm text-on-surface-variant">Umumiy yuklama</span>
-                  <span className="mt-1 font-metric-num text-metric-num text-primary">{fmtNum(level.hours)}</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">akademik soat</span>
-                </div>
-                <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
-                  <span className="text-body-sm text-on-surface-variant">Guruhlar</span>
-                  <span className="mt-1 font-metric-num text-metric-num text-navy">{level.groupsCount} ta</span>
-                  <span className="truncate font-label-sm text-label-sm text-on-surface-variant" title={level.groups.map((g) => g.name).join(", ")}>
-                    {level.groups.length ? level.groups.map((g) => g.name.match(/#\d+/)?.[0] ?? g.code).join(" · ") : "guruh yoʻq"}
-                  </span>
-                </div>
-                <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
-                  <span className="text-body-sm text-on-surface-variant">Davomiylik</span>
-                  <span className="mt-1 font-metric-num text-metric-num text-tertiary">{weeks} hafta</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    ≈ {months} oy · {fmtNum(level.lessons)} dars
-                  </span>
-                </div>
+            </div>
+
+            {level.description ? (
+              <p className="max-w-3xl text-body-md leading-snug text-on-surface-variant">{level.description}</p>
+            ) : (
+              <p className="text-body-sm text-on-surface-muted">
+                Bu bosqich nima oʻrgatishi yozilmagan. “Tavsifni tahrirlash” tugmasi bilan qoʻshing — ustozlar va yangi xodimlar uchun ayni shu matn bosqichni tushuntiradi.
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
+                <span className="text-body-sm text-on-surface-variant">Mavzular</span>
+                <span className="mt-1 font-metric-num text-metric-num text-primary">{fmtNum(level.topicsCount)}</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">unit</span>
               </div>
-              {data ? (
-                <div className="mt-3 rounded-lg bg-surface-container-low p-3">
+              <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
+                <span className="text-body-sm text-on-surface-variant">Darslar</span>
+                <span className="mt-1 font-metric-num text-metric-num text-navy">{fmtNum(level.lessons)}</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">{fmtNum(level.hours)} akademik soat</span>
+              </div>
+              <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
+                <span className="text-body-sm text-on-surface-variant">Davomiylik</span>
+                <span className="mt-1 font-metric-num text-metric-num text-tertiary">{weeks} hafta</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">≈ {months} oy</span>
+              </div>
+              <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
+                <span className="text-body-sm text-on-surface-variant">Resurslar</span>
+                <span className="mt-1 font-metric-num text-metric-num text-on-surface">{fmtNum(level.materialsCount)}</span>
+                <Link to="/admin/resurslar" className="font-label-sm text-label-sm text-primary hover:underline">
+                  Resurslar bazasi
+                </Link>
+              </div>
+            </div>
+
+            {data ? (
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <div className="min-w-[220px] flex-1">
                   <ProgressBar value={data.stats.materialsCoveragePct ?? 0} label="Materiallar bilan taʼminlanganlik" showValue />
-                  <div className="mt-2 text-body-sm text-on-surface-variant">
+                  <div className="mt-1 text-body-sm text-on-surface-variant">
                     {data.stats.published} tasdiqlangan · {data.stats.draft} qoralama · {data.stats.archived} arxivda
                   </div>
                 </div>
-              ) : null}
-            </Card>
-          ) : null}
-
-          {data?.stats.lastUpdatedAt ? (
-            <Card className="flex items-center gap-3 p-4">
-              <Avatar name={data.stats.lastAuthor?.fullName ?? "Sillabus"} size="lg" tone="neutral" />
-              <div className="min-w-0">
-                <div className="truncate font-label-lg text-label-lg text-on-surface">{data.stats.lastAuthor?.fullName ?? "Muallif belgilanmagan"}</div>
-                <div className="truncate text-body-sm text-on-surface-variant">{data.stats.lastAuthor?.title ?? "Sillabusning soʻnggi tahriri"}</div>
-                <div className="font-label-sm text-label-sm text-primary">Soʻnggi yangilanish: {fmtDate(data.stats.lastUpdatedAt)}</div>
+                {data.stats.lastUpdatedAt ? (
+                  <div className="flex items-center gap-2">
+                    <Avatar name={data.stats.lastAuthor?.fullName ?? "Sillabus"} size="md" tone="neutral" />
+                    <div className="min-w-0">
+                      <div className="truncate font-label-md text-label-md text-on-surface">{data.stats.lastAuthor?.fullName ?? "Muallif belgilanmagan"}</div>
+                      <div className="truncate font-label-sm text-label-sm text-on-surface-variant">Soʻnggi tahrir: {fmtDate(data.stats.lastUpdatedAt)}</div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            </Card>
-          ) : null}
-        </div>
+            ) : null}
+          </>
+        ) : levelsQ.isLoading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : null}
+      </Card>
 
-        {/* ─── O'ng ustun: mavzular ─── */}
-        <div className="flex min-w-0 flex-col gap-3 xl:col-span-8">
+      {/* ─── Tanlangan bosqich mavzulari ─── */}
+      <div className="flex min-w-0 flex-col gap-3">
           <Card className="flex flex-col gap-3 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -426,7 +392,6 @@ export default function AdminCurriculumPage() {
             </Link>
           </div>
         </div>
-      </div>
 
       <TopicFormDialog
         open={createOpen}
@@ -462,35 +427,6 @@ export default function AdminCurriculumPage() {
         }}
       />
     </>
-  );
-}
-
-/** Unitning darsma-dars rejasi (Prepare 2e asosida) — ochiladigan roʻyxat. */
-function PlanDetails({ plan }: { plan: NonNullable<TopicRow["lessonPlan"]> }) {
-  return (
-    <details className="mt-2.5 rounded-lg bg-surface-container-low px-3 py-2 text-body-sm">
-      <summary className="cursor-pointer font-label-md text-label-md text-on-surface">Dars rejasi · {plan.length} dars</summary>
-      <ol className="mt-2 flex flex-col gap-2.5">
-        {plan.map((p, i) => (
-          <li key={i} className="flex flex-col gap-0.5">
-            <span className="font-semibold text-on-surface">
-              {i + 1}-dars · {p.focus}
-              {p.sb && p.sb !== "—" ? <span className="font-normal tabular-nums text-on-surface-variant"> · SB {p.sb}</span> : null}
-            </span>
-            <ul className="list-disc pl-5 text-on-surface-variant">
-              {p.steps.map((s, k) => (
-                <li key={k}>{s}</li>
-              ))}
-            </ul>
-            {p.homework ? (
-              <span className="text-on-surface-variant">
-                <b className="font-semibold text-on-surface">Uy vazifasi:</b> {p.homework}
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-    </details>
   );
 }
 
@@ -546,7 +482,7 @@ function TopicCard({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className={cn("font-headline-md text-headline-md", live ? "text-primary" : "text-on-surface", t.status === "ARCHIVED" && "text-on-surface-variant")}>
-            Unit {t.unit}: {t.title}
+            {t.title.toLowerCase().startsWith("unit ") ? t.title : `Unit ${t.unit}: ${t.title}`}
           </h3>
           <Badge tone="neutral">
             {t.lessonsCount} dars · {fmtNum(t.hours)} soat
@@ -583,7 +519,7 @@ function TopicCard({
             {t.vocabulary.length > 6 ? <span className="px-1 text-on-surface-muted">+{t.vocabulary.length - 6}</span> : null}
           </div>
         ) : null}
-        {t.lessonPlan?.length ? <PlanDetails plan={t.lessonPlan} /> : null}
+        {t.lessonPlan?.length ? <LessonPlanAll plan={t.lessonPlan} /> : null}
         {live ? (
           <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-lg bg-surface-container-low p-2">
             <Icon name="record_voice_over" size={20} className="text-primary" />

@@ -1,5 +1,5 @@
 // teacher-a API javob turlari (api/src/routes/teacher/{dashboard,groups,lessons,schedule}.ts bilan bir xil).
-import type { ISODate } from "@/lib/types";
+import type { ISODate, PlanLesson } from "@/lib/types";
 
 export type LessonStatus = "PLANNED" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 export type AttStatus = "PRESENT" | "LATE" | "EXCUSED" | "ABSENT";
@@ -255,13 +255,8 @@ export interface LessonMaterial {
   createdAt: ISODate;
 }
 
-/** Darsma-dars reja (Mavzular bazasi → unit.lessonPlan) */
-export interface PlanLesson {
-  focus: string;
-  sb: string;
-  steps: string[];
-  homework: string;
-}
+/** Darsma-dars reja (Mavzular bazasi → unit.lessonPlan) — tuzilishi @/lib/types da */
+export type { PlanLesson };
 
 export interface LessonResponse {
   lesson: {
