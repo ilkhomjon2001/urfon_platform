@@ -238,7 +238,15 @@ export interface TeacherDetail {
 }
 
 // ─── Mavzular bazasi ───
-export interface LevelStat {
+/** Bosqich tavsifi: kimga moʻljallangan, CEFR darajasi, necha hafta va nima oʻrgatadi. */
+export interface LevelMeta {
+  audience: string | null;
+  cefr: string | null;
+  weeks: number | null;
+  description: string | null;
+}
+
+export interface LevelStat extends LevelMeta {
   id: string;
   code: string;
   name: string;
@@ -284,7 +292,7 @@ export interface TopicRow {
 }
 
 export interface TopicsResponse {
-  level: LevelRef & { order: number };
+  level: LevelRef & { order: number } & LevelMeta;
   stats: {
     topics: number;
     published: number;

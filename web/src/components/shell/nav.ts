@@ -19,6 +19,10 @@ export interface NavItem {
   match?: string[];
   /** Oldidan ajratuvchi chiziq */
   dividerBefore?: boolean;
+  /** Menyu bo'limi sarlavhasi (shu punktdan boshlanadi) */
+  section?: string;
+  /** Punkt ustiga kursor kelganda chiqadigan izoh */
+  hint?: string;
 }
 
 export interface RoleNav {
@@ -46,15 +50,16 @@ export const NAV: Record<Role, RoleNav> = {
     cabinet: CABINET_NAME.ADMIN,
     searchPlaceholder: "Oʻquvchi, ustoz, guruh yoki toʻlov qidirish…",
     items: [
-      { key: "home", label: "Bosh sahifa", short: "Bosh", icon: "space_dashboard", to: "/admin" },
-      { key: "groups", label: "Guruhlar", icon: "groups", to: "/admin/guruhlar", badgeTone: "muted" },
-      { key: "teachers", label: "Ustozlar", icon: "person_apron", to: "/admin/ustozlar", badgeTone: "muted" },
-      { key: "students", label: "Oʻquvchilar", icon: "school", to: "/admin/oquvchilar", badgeTone: "muted" },
-      { key: "parents", label: "Ota-onalar", icon: "family_restroom", to: "/admin/ota-onalar" },
-      { key: "curriculum", label: "Mavzular bazasi", short: "Mavzular", icon: "menu_book", to: "/admin/mavzular" },
-      { key: "payments", label: "Toʻlovlar", icon: "payments", to: "/admin/tolovlar", badgeTone: "error" },
-      { key: "reports", label: "Hisobotlar", icon: "analytics", to: "/admin/hisobotlar" },
-      { key: "audit", label: "Tizim jurnali", short: "Jurnal", icon: "receipt_long", to: "/admin/jurnal", dividerBefore: true },
+      { key: "home", label: "Bosh sahifa", short: "Bosh", icon: "space_dashboard", to: "/admin", hint: "Markazning bugungi holati: darslar, davomat, toʻlovlar" },
+      { key: "groups", section: "Markaz", label: "Guruhlar", icon: "groups", to: "/admin/guruhlar", badgeTone: "muted", hint: "Guruh ochish, ustoz va xona biriktirish, dars jadvali" },
+      { key: "teachers", label: "Ustozlar", icon: "person_apron", to: "/admin/ustozlar", badgeTone: "muted", hint: "Ustozlar roʻyxati, yuklama va kabinet kirish maʼlumotlari" },
+      { key: "students", label: "Oʻquvchilar", icon: "school", to: "/admin/oquvchilar", badgeTone: "muted", hint: "Oʻquvchini qabul qilish, guruhga qoʻshish, chiqarish" },
+      { key: "parents", label: "Ota-onalar", icon: "family_restroom", to: "/admin/ota-onalar", hint: "Ota-ona kabinetlari va Telegram hisobotga ulanish" },
+      { key: "curriculum", section: "Oʻquv dasturi", label: "Mavzular bazasi", short: "Mavzular", icon: "menu_book", to: "/admin/mavzular", hint: "Levellar va unitlar: sillabus hamda darsma-dars reja" },
+      { key: "materials", label: "Resurslar bazasi", short: "Resurslar", icon: "folder_open", to: "/admin/resurslar", hint: "Darslik PDF, audio va boshqa fayllar — ustozlarga koʻrinadi" },
+      { key: "payments", section: "Moliya va nazorat", label: "Toʻlovlar", icon: "payments", to: "/admin/tolovlar", badgeTone: "error", hint: "Oylik hisob-kitob, naqd qabul qilish, qarzdorlar" },
+      { key: "reports", label: "Hisobotlar", icon: "analytics", to: "/admin/hisobotlar", hint: "Davomat, oʻzlashtirish va daromad boʻyicha tahlil" },
+      { key: "audit", label: "Tizim jurnali", short: "Jurnal", icon: "receipt_long", to: "/admin/jurnal", hint: "Kim, qachon, nimani oʻzgartirgani — toʻliq tarix" },
     ],
     settings: settings("ADMIN"),
     mobileTabs: ["home", "groups", "students", "payments"],

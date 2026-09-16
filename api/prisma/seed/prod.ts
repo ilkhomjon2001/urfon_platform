@@ -51,7 +51,13 @@ async function main() {
   }
   // leveller
   // URFON oʻquv dasturi levellari (unitlari: npm run curriculum:import -w api)
-  for (const l of CURRICULUM) await prisma.level.upsert({ where: { code: l.code }, create: { code: l.code, name: l.name, order: l.order }, update: {} });
+  for (const l of CURRICULUM) {
+    await prisma.level.upsert({
+      where: { code: l.code },
+      create: { code: l.code, name: l.name, order: l.order, audience: l.audience, cefr: l.cefr, weeks: l.weeks, description: l.description },
+      update: {},
+    });
+  }
 
   // admin
   const existing = await prisma.user.findUnique({ where: { login } });

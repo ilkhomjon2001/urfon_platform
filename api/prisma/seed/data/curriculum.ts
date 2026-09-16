@@ -26,6 +26,10 @@ export type CurriculumLevel = {
   order: number;
   cefr: string;
   weeks: number;
+  /** kimga moʻljallangan: "13–16 yosh", "8–12 yosh", … */
+  audience: string;
+  /** bosqich nima oʻrgatadi va qaysi kitob asosida (admin panelda koʻrinadi) */
+  description: string;
   units: CurriculumUnit[];
 };
 
@@ -45,6 +49,8 @@ const L1: CurriculumLevel = {
   order: 1,
   cefr: "Pre-A1",
   weeks: 10,
+  audience: "13–16 yosh",
+  description: "Ingliz tilini nolldan boshlaydiganlar uchun birinchi bosqich: alifbo, sonlar, oʻzi va oilasi haqida gapirish.",
   units: [
     u(1, "Salom va sinf",
       "Salomlashish, oʻzini tanishtirish va sinfdagi oddiy buyruqlar bilan tanishish haftasi.",
@@ -128,6 +134,8 @@ const L2: CurriculumLevel = {
   order: 2,
   cefr: "A1",
   weeks: 10,
+  audience: "13–16 yosh",
+  description: "Birinchi bosqich davomi: kundalik hayot, maktab, xarid va oʻtgan zamon haqida gapirish.",
   units: [
     u(1, "Men va doʻstlarim",
       "Oʻzi va doʻstlari haqida asosiy shaxsiy maʼlumotlarni soʻrash va berish haftasi.",
@@ -211,6 +219,8 @@ const L3: CurriculumLevel = {
   order: 3,
   cefr: "A1+",
   weeks: 10,
+  audience: "13–16 yosh",
+  description: "Oʻqish va yozish koʻnikmalarini mustahkamlash. Prepare 2e Level 2 olingach darsma-dars reja bilan yangilanadi.",
   units: [
     u(1, "Oldin va hozir",
       "Oʻtmishda qanday boʻlganini hozirgi holat bilan solishtirib gapirish haftasi.",
@@ -294,6 +304,8 @@ const L4: CurriculumLevel = {
   order: 4,
   cefr: "A2",
   weeks: 12,
+  audience: "13–16 yosh",
+  description: "Kundalik muloqot: real vaziyatlarda erkin gapirish. Prepare 2e Level 3 olingach yangilanadi.",
   units: [
     u(1, "Maktab hayoti",
       "Maktab hayoti, qoidalar va oʻtgan oʻquv yili voqealari haqida gapirish haftasi.",
@@ -395,6 +407,8 @@ const L5: CurriculumLevel = {
   order: 5,
   cefr: "A2+",
   weeks: 12,
+  audience: "13–16 yosh",
+  description: "Ishonchli soʻzlashuv va oʻz fikrini asoslash. Prepare 2e Level 4 olingach yangilanadi.",
   units: [
     u(1, "Tajribalar",
       "Hayotda boshdan kechirgan va hali qilmagan tajribalar haqida gapirish haftasi.",
@@ -496,6 +510,8 @@ const L6: CurriculumLevel = {
   order: 6,
   cefr: "B1",
   weeks: 12,
+  audience: "13–16 yosh",
+  description: "Umumiy kursning yakuniy bosqichi: erkin suhbat va mustaqil matn yozish. Prepare 2e Level 5 olingach yangilanadi.",
   units: [
     u(1, "Agar… (2-shart gap)",
       "Xayoliy vaziyatlar va ular natijasi haqida ikkinchi shart gap bilan fikr yuritish haftasi.",
@@ -599,8 +615,10 @@ const CEFR: CurriculumLevel = {
   code: "CEFR",
   name: "CEFR (Multilevel) — B2 tayyorlov",
   order: 7,
-  cefr: "B1→B2",
+  cefr: "B1 → B2",
   weeks: 24,
+  audience: "Kursni bitirganlar (B1 daraja)",
+  description: "Milliy Multilevel imtihoniga tayyorlov: 24 hafta (taxminan 6 oy), imtihon formati va mock testlar. B2 uchun 51–64 ball kerak.",
   units: [
     // B2 koʻprigi
     u(1, "1-hafta · Taʼlim — Listening 1–2-qism",
@@ -833,8 +851,10 @@ const IELTS: CurriculumLevel = {
   code: "IELTS",
   name: "IELTS — Foundation va Intensive",
   order: 8,
-  cefr: "B1→B2+",
+  cefr: "B1 → B2+",
   weeks: 24,
+  audience: "Kursni bitirganlar (B1 daraja)",
+  description: "IELTS tayyorlov: 24 hafta (taxminan 6 oy), Foundation va Intensive bosqichlari, har bir modul boʻyicha strategiya va mock testlar.",
   units: [
     // Foundation (4.5 → 5.5)
     u(1, "1-hafta · Taʼlim — Format va Speaking 1-qism",
@@ -1060,7 +1080,18 @@ const IELTS: CurriculumLevel = {
 // ─── Prepare 2e Level 1 (A1) asosidagi levellar (2026-09-16) ───
 // Kitob ikki levelga boʻlinadi: 0–10-unitlar va 11–20-unitlar. 13–16 yosh — L1/L2 (unit ≈ 2 dars, level ≈ 10 hafta),
 // 8–12 yosh — K1/K2 (unit ≈ 3 dars + oʻyin va takror, level 3 oydan ortiq). Darsma-dars reja — ./prepare1.ts.
-function fromPrepare1(code: string, name: string, order: number, cefr: string, track: "teen" | "kids", from: number, to: number): CurriculumLevel {
+function fromPrepare1(o: {
+  code: string;
+  name: string;
+  order: number;
+  cefr: string;
+  audience: string;
+  description: string;
+  track: "teen" | "kids";
+  from: number;
+  to: number;
+}): CurriculumLevel {
+  const { code, name, order, cefr, audience, description, track, from, to } = o;
   const units = PREPARE1.units
     .filter((u) => u.unit >= from && u.unit <= to)
     .map((u): CurriculumUnit => {
@@ -1078,18 +1109,33 @@ function fromPrepare1(code: string, name: string, order: number, cefr: string, t
       };
     });
   const lessons = units.reduce((s, u) => s + u.lessonsCount, 0);
-  return { code, name, order, cefr, weeks: Math.ceil(lessons / 3), units };
+  return { code, name, order, cefr, audience, description, weeks: Math.ceil(lessons / 3), units };
 }
 
+const TEENS = "13–16 yosh";
+const KIDS = "8–12 yosh";
+
 export const CURRICULUM: CurriculumLevel[] = [
-  fromPrepare1("L1", L1.name, 1, "Pre-A1 → A1 · Prepare 1, 0–10-unit", "teen", 0, 10),
-  fromPrepare1("L2", L2.name, 2, "A1 · Prepare 1, 11–20-unit", "teen", 11, 20),
+  fromPrepare1({
+    code: "L1", name: L1.name, order: 1, cefr: "Pre-A1 → A1", audience: TEENS, track: "teen", from: 0, to: 10,
+    description: "Cambridge Prepare 2e Level 1, Starter va 1–10-unitlar. Nolldan boshlaydiganlar uchun: alifbo, sonlar, oʻzi, oilasi va sinfi haqida gapirish. Har unit taxminan 2 dars.",
+  }),
+  fromPrepare1({
+    code: "L2", name: L2.name, order: 2, cefr: "A1", audience: TEENS, track: "teen", from: 11, to: 20,
+    description: "Cambridge Prepare 2e Level 1, 11–20-unitlar. Level 1 davomi: kundalik hayot, xarid, sayohat va oʻtgan zamon. Har unit taxminan 2 dars.",
+  }),
   L3,
   L4,
   L5,
   L6,
-  fromPrepare1("K1", `Kids 1 · ${L1.name}`, 7, "Pre-A1 → A1 · Prepare 1, 0–10-unit (8–12 yosh)", "kids", 0, 10),
-  fromPrepare1("K2", `Kids 2 · ${L2.name}`, 8, "A1 · Prepare 1, 11–20-unit (8–12 yosh)", "kids", 11, 20),
+  fromPrepare1({
+    code: "K1", name: `Kids 1 · ${L1.name}`, order: 7, cefr: "Pre-A1 → A1", audience: KIDS, track: "kids", from: 0, to: 10,
+    description: "Level 1 bilan bir xil kitob (Prepare 2e Level 1, Starter va 1–10-unit), lekin kichik yosh uchun sekinroq: har unit 3–4 darsga boʻlingan, qoʻshiq, harakatli oʻyin va flashcardlar bilan.",
+  }),
+  fromPrepare1({
+    code: "K2", name: `Kids 2 · ${L2.name}`, order: 8, cefr: "A1", audience: KIDS, track: "kids", from: 11, to: 20,
+    description: "Level 2 bilan bir xil kitob (Prepare 2e Level 1, 11–20-unit), kichik yosh uchun sekinroq va koʻproq takrorlash bilan.",
+  }),
   { ...CEFR, order: 9 },
   { ...IELTS, order: 10 },
 ];

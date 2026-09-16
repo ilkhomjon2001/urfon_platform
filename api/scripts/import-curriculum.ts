@@ -23,10 +23,11 @@ async function main() {
       else stats.levelsCreated++;
       continue;
     }
+    const meta = { name: lv.name, order: lv.order, audience: lv.audience, cefr: lv.cefr, weeks: lv.weeks, description: lv.description };
     const level = await prisma.level.upsert({
       where: { code: lv.code },
-      create: { code: lv.code, name: lv.name, order: lv.order },
-      update: { name: lv.name, order: lv.order },
+      create: { code: lv.code, ...meta },
+      update: meta,
     });
     if (before) stats.levelsUpdated++;
     else stats.levelsCreated++;

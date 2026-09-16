@@ -174,66 +174,134 @@ export function TopicFormDialog({
   );
 }
 
-export function LevelDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: (id: string) => void }) {
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
+const EMPTY_LEVEL = { code: "", name: "", audience: "", cefr: "", weeks: "", description: "" };
+
+/** Bosqich (level) yaratish va tavsifini tahrirlash. Tavsif admin panelda bosqichlar roʻyxatida koʻrinadi. */
+export function LevelDialog({
+  open,
+  onOpenChange,
+  onCreated,
+  level,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onCreated: (id: string) => void;
+  /** berilsa — tahrirlash rejimi */
+  level?: LevelStat | null;
+}) {
+  const editing = !!level;
+  const [f, setF] = useState(EMPTY_LEVEL);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (open) {
-      setCode("");
-      setName("");
+      setF(
+        level
+          ? {
+              code: level.code,
+              name: level.name,
+              audience: level.audience ?? "",
+              cefr: level.cefr ?? "",
+              weeks: level.weeks != null ? String(level.weeks) : "",
+              description: level.description ?? "",
+            }
+          : EMPTY_LEVEL,
+      );
       setError(null);
     }
-  }, [open]);
-  const save = useApiMutation((b: { code: string; name: string }) => api.post<{ id: string }>("/admin/curriculum/levels", b), {
-    invalidate: [["admin", "curriculum"], ["admin", "lookups"]],
-    silentError: true,
-    success: "Yangi bosqich yaratildi",
-  });
+  }, [open, level]);
+
+  const save = useApiMutation(
+    (b: Record<string, unknown>) =>
+      editing ? api.put<{ id: string }>(`/admin/curriculum/levels/${level!.id}`, b) : api.post<{ id: string }>("/admin/curriculum/levels", b),
+    {
+      invalidate: [["admin", "curriculum"], ["admin", "lookups"]],
+      silentError: true,
+      success: editing ? "Bosqich tavsifi saqlandi" : "Yangi bosqich yaratildi",
+    },
+  );
+
   const submit = async () => {
-    if (!/^[A-Za-z0-9_-]{1,12}$/.test(code.trim())) return setError("Kod lotin harf va raqamlardan iborat boʻlsin (masalan L7)");
-    if (name.trim().length < 2) return setError("Bosqich nomini kiriting");
+    if (!editing && !/^[A-Za-z0-9_-]{1,12}$/.test(f.code.trim())) return setError("Kod lotin harf va raqamlardan iborat boʻlsin (masalan L7)");
+    if (f.name.trim().length < 2) return setError("Bosqich nomini kiriting");
+    const weeks = f.weeks.trim() ? Number(f.weeks) : null;
+    if (weeks !== null && (!Number.isInteger(weeks) || weeks < 1 || weeks > 200)) return setError("Davomiyligi 1 dan 200 gacha hafta boʻlsin");
     setError(null);
     try {
-      const l = await save.mutateAsync({ code: code.trim().toUpperCase(), name: name.trim() });
+      const l = await save.mutateAsync({
+        ...(editing ? {} : { code: f.code.trim().toUpperCase() }),
+        name: f.name.trim(),
+        audience: f.audience.trim() || null,
+        cefr: f.cefr.trim() || null,
+        weeks,
+        description: f.description.trim() || null,
+      });
       onOpenChange(false);
       onCreated(l.id);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Saqlab boʻlmadi");
     }
   };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => !save.isPending && onOpenChange(o)}
-      size="sm"
-      title="Yangi bosqich yaratish"
-      description="Kod “L7” koʻrinishida boʻlsa, nom “Level 7 · …” deb koʻrsatiladi"
+      size="md"
+      title={editing ? `Bosqich: ${level!.label ?? level!.name}` : "Yangi bosqich yaratish"}
+      description={
+        editing
+          ? "Bu maʼlumotlar bosqichlar roʻyxatida koʻrinadi va yangi xodimga qaysi bosqich kimga moʻljallanganini tushuntiradi"
+          : "Kod “L7” koʻrinishida boʻlsa, nom “Level 7 · …” deb koʻrsatiladi"
+      }
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={save.isPending}>
             Bekor qilish
           </Button>
-          <Button icon="add" onClick={submit} loading={save.isPending}>
-            Yaratish
+          <Button icon={editing ? "save" : "add"} onClick={submit} loading={save.isPending}>
+            {editing ? "Saqlash" : "Yaratish"}
           </Button>
         </>
       }
     >
       <form
-        className="flex flex-col gap-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
-        {error ? <Alert tone="danger">{error}</Alert> : null}
-        <Field label="Kod" required>
-          <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="L7" maxLength={12} autoFocus />
+        {error ? (
+          <div className="sm:col-span-2">
+            <Alert tone="danger">{error}</Alert>
+          </div>
+        ) : null}
+        <Field label="Kod" required hint={editing ? "Kodni oʻzgartirib boʻlmaydi" : undefined}>
+          <Input value={f.code} onChange={(e) => setF((s) => ({ ...s, code: e.target.value }))} placeholder="L7" maxLength={12} disabled={editing} autoFocus={!editing} />
         </Field>
         <Field label="Nomi" required>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Business English" maxLength={80} />
+          <Input value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} placeholder="Business English" maxLength={80} autoFocus={editing} />
         </Field>
+        <Field label="Kimga moʻljallangan" hint="Guruh ochayotganda shu yozuv koʻrinadi">
+          <Input value={f.audience} onChange={(e) => setF((s) => ({ ...s, audience: e.target.value }))} placeholder="13–16 yosh" maxLength={60} />
+        </Field>
+        <Field label="CEFR darajasi">
+          <Input value={f.cefr} onChange={(e) => setF((s) => ({ ...s, cefr: e.target.value }))} placeholder="A2 → B1" maxLength={40} />
+        </Field>
+        <Field label="Davomiyligi (hafta)" hint="Boʻsh qoldirilsa darslar sonidan hisoblanadi">
+          <Input value={f.weeks} onChange={(e) => setF((s) => ({ ...s, weeks: e.target.value }))} inputMode="numeric" placeholder="10" maxLength={3} />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Tavsif" hint="Bosqich nima oʻrgatadi, qaysi kitob asosida, nima bilan farq qiladi">
+            <Textarea
+              value={f.description}
+              onChange={(e) => setF((s) => ({ ...s, description: e.target.value }))}
+              rows={3}
+              maxLength={1000}
+              placeholder="Prepare 2e Level 1 asosida, Starter va 1–10-unitlar. Nolldan boshlaydiganlar uchun."
+            />
+          </Field>
+        </div>
       </form>
     </Dialog>
   );

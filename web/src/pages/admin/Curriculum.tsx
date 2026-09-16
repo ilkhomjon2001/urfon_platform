@@ -48,6 +48,7 @@ export default function AdminCurriculumPage() {
   const [editTopic, setEditTopic] = useState<TopicRow | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<TopicRow | null>(null);
   const [levelOpen, setLevelOpen] = useState(false);
+  const [editLevel, setEditLevel] = useState<LevelStat | null>(null);
   const [noteHidden, setNoteHidden] = useState(() => {
     try {
       return localStorage.getItem(NOTE_KEY) === "1";
@@ -123,7 +124,9 @@ export default function AdminCurriculumPage() {
     );
   };
 
-  const months = level ? Math.max(1, Math.round(level.lessons / 12)) : 0;
+  // Davomiylik: dasturda koʻrsatilgan hafta, boʻlmasa darslar sonidan (haftasiga 3 dars) hisoblanadi.
+  const weeks = level ? (level.weeks ?? Math.max(1, Math.round(level.lessons / 3))) : 0;
+  const months = Math.max(1, Math.round(weeks / 4.3));
 
   return (
     <>
@@ -229,8 +232,12 @@ export default function AdminCurriculumPage() {
                             <span className="truncate font-label-lg text-label-lg">{l.label ?? l.name}</span>
                             {l.groupsCount ? <span className="h-2 w-2 shrink-0 rounded-full bg-gold" title="Faol guruhlar bor" /> : null}
                           </span>
-                          <span className={cn("block text-body-sm", active ? "text-on-primary/80" : "text-on-surface-variant")}>
-                            {l.topicsCount} ta mavzu · {l.materialsCount} ta resurs{l.groupsCount ? ` · ${l.groupsCount} guruh` : ""}
+                          <span className={cn("block truncate text-body-sm", active ? "text-on-primary/80" : "text-on-surface-variant")}>
+                            {[l.audience, l.cefr].filter(Boolean).join(" · ") || "Kimga moʻljallangani koʻrsatilmagan"}
+                          </span>
+                          <span className={cn("block truncate font-label-sm text-label-sm", active ? "text-on-primary/70" : "text-on-surface-muted")}>
+                            {l.topicsCount} ta mavzu · {fmtNum(l.lessons)} dars{l.materialsCount ? ` · ${l.materialsCount} ta resurs` : ""}
+                            {l.groupsCount ? ` · ${l.groupsCount} guruh` : ""}
                           </span>
                         </span>
                       </span>
@@ -247,10 +254,26 @@ export default function AdminCurriculumPage() {
 
           {level ? (
             <Card className="p-4 sm:p-5">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Tanlangan bosqich koʻrsatkichlari</span>
-                <Badge tone="gold">{level.name}</Badge>
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Tanlangan bosqich</span>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">{level.label ?? level.name}</h3>
+                </div>
+                <IconButton icon="edit" label="Bosqich tavsifini tahrirlash" size="sm" onClick={() => setEditLevel(level)} />
               </div>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                <Badge tone="gold" icon="groups">
+                  {level.audience ?? "Yosh guruhi koʻrsatilmagan"}
+                </Badge>
+                {level.cefr ? <Badge tone="neutral">CEFR: {level.cefr}</Badge> : null}
+              </div>
+              {level.description ? (
+                <p className="mb-3 text-body-md leading-snug text-on-surface-variant">{level.description}</p>
+              ) : (
+                <p className="mb-3 text-body-sm text-on-surface-muted">
+                  Bu bosqich nima oʻrgatishi yozilmagan. Qalamchani bosib tavsif qoʻshing — ustozlar va yangi xodimlar uchun ayni shu matn bosqichni tushuntiradi.
+                </p>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
                   <span className="text-body-sm text-on-surface-variant">Umumiy yuklama</span>
@@ -266,8 +289,10 @@ export default function AdminCurriculumPage() {
                 </div>
                 <div className="flex flex-col rounded-lg bg-surface-container-low p-2.5 text-center">
                   <span className="text-body-sm text-on-surface-variant">Davomiylik</span>
-                  <span className="mt-1 font-metric-num text-metric-num text-tertiary">{months} oy</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">{fmtNum(level.lessons)} dars</span>
+                  <span className="mt-1 font-metric-num text-metric-num text-tertiary">{weeks} hafta</span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    ≈ {months} oy · {fmtNum(level.lessons)} dars
+                  </span>
                 </div>
               </div>
               {data ? (
@@ -300,6 +325,7 @@ export default function AdminCurriculumPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-headline-md text-headline-md text-on-surface">{level?.label ?? level?.name ?? "Level"}</h2>
                 {data ? <Badge tone="primary">{data.stats.topics} ta mavzu</Badge> : null}
+                {level?.audience ? <Badge tone="neutral">{level.audience}</Badge> : null}
               </div>
               <span className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant">
                 <Icon name="swap_vert" size={16} className="text-primary" />
@@ -418,6 +444,7 @@ export default function AdminCurriculumPage() {
         onSaved={(m) => toast.success(m)}
       />
       <LevelDialog open={levelOpen} onOpenChange={setLevelOpen} onCreated={(id) => setLevelParam(id)} />
+      <LevelDialog open={!!editLevel} level={editLevel} onOpenChange={(o) => !o && setEditLevel(null)} onCreated={(id) => setLevelParam(id)} />
       <ConfirmDialog
         open={!!archiveTarget}
         onOpenChange={(o) => !o && setArchiveTarget(null)}

@@ -6,6 +6,7 @@ import dashboard from "./dashboard.js";
 import groups from "./groups.js";
 import teachers from "./teachers.js";
 import curriculum from "./curriculum.js";
+import materials from "./materials.js";
 import lookups from "./lookups.js";
 import students from "./students.js";
 import parents from "./parents.js";
@@ -20,6 +21,7 @@ export default async function adminRoutes(app: FastifyInstance) {
   await app.register(groups);
   await app.register(teachers);
   await app.register(curriculum);
+  await app.register(materials);
   await app.register(lookups);
   await app.register(students);
   await app.register(parents);

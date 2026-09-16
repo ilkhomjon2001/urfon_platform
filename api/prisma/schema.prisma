@@ -158,12 +158,16 @@ model Room {
 }
 
 model Level {
-  id     String  @id @default(cuid())
-  code   String  @unique // "L1".."L6", "KIDS"
-  name   String // "IELTS Foundation"
-  order  Int
-  topics Topic[]
-  groups Group[]
+  id          String  @id @default(cuid())
+  code        String  @unique // "L1".."L6", "K1", "K2", "CEFR", "IELTS"
+  name        String // "Boshlangʻich qadam"
+  order       Int
+  audience    String? // kimga moʻljallangan: "13–16 yosh", "8–12 yosh"
+  cefr        String? // xalqaro daraja: "Pre-A1 → A1", "B1 → B2"
+  weeks       Int? // taxminiy davomiylik (hafta)
+  description String? // bosqich nima oʻrgatadi va qaysi kitob asosida
+  topics      Topic[]
+  groups      Group[]
 }
 
 enum TopicStatus {

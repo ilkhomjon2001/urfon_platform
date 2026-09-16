@@ -24,6 +24,17 @@ const topicFields = {
 const createBody = z.object({ ...topicFields, levelId: zId, status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT") });
 const updateBody = z.object(topicFields).partial();
 
+// Level tavsifi: admin panelda "bu bosqich kimga va nima uchun" degan savolga javob beradi.
+const levelMeta = {
+  audience: z.string().trim().max(60).nullable().optional(),
+  cefr: z.string().trim().max(40).nullable().optional(),
+  weeks: z.number().int().min(1).max(200).nullable().optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+};
+const levelSnapshot = (l: { code?: string; name: string; order: number; audience: string | null; cefr: string | null; weeks: number | null; description: string | null }) => ({
+  ...(l.code ? { code: l.code } : {}), name: l.name, order: l.order, audience: l.audience, cefr: l.cefr, weeks: l.weeks, description: l.description,
+});
+
 const STATUS_LABEL = { DRAFT: "Qoralama", PUBLISHED: "Tasdiqlangan", ARCHIVED: "Arxivlangan" } as const;
 const topicName = (t: { unit: number; title: string }) => `Unit ${t.unit} — ${t.title}`;
 
@@ -74,6 +85,10 @@ export default async function curriculum(app: FastifyInstance) {
           name: l.name,
           order: l.order,
           label: levelLabel(l),
+          audience: l.audience,
+          cefr: l.cefr,
+          weeks: l.weeks,
+          description: l.description,
           topicsCount: live.length,
           published: l.topics.filter((t) => t.status === "PUBLISHED").length,
           draft: l.topics.filter((t) => t.status === "DRAFT").length,
@@ -96,16 +111,22 @@ export default async function curriculum(app: FastifyInstance) {
         code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{1,12}$/, "Kod lotin harf/raqam (masalan L7)"),
         name: z.string().trim().min(2).max(80),
         order: z.number().int().min(0).max(1000).optional(),
+        ...levelMeta,
       }),
       req.body,
     );
     if (await prisma.level.findUnique({ where: { code: b.code } })) throw conflict(`“${b.code}” kodli level mavjud`);
     const max = await prisma.level.aggregate({ _max: { order: true } });
     const level = await prisma.$transaction(async (tx) => {
-      const l = await tx.level.create({ data: { code: b.code, name: b.name, order: b.order ?? (max._max.order ?? 0) + 1 } });
+      const l = await tx.level.create({
+        data: {
+          code: b.code, name: b.name, order: b.order ?? (max._max.order ?? 0) + 1,
+          audience: b.audience ?? null, cefr: b.cefr ?? null, weeks: b.weeks ?? null, description: b.description ?? null,
+        },
+      });
       await writeAudit(tx, {
         ...auditCtx(req), action: "level.create", entityType: "Level", entityId: l.id,
-        summary: `Yangi bosqich yaratildi: ${levelLabel(l)}`, after: { code: l.code, name: l.name, order: l.order },
+        summary: `Yangi bosqich yaratildi: ${levelLabel(l)}`, after: levelSnapshot(l),
       });
       return l;
     });
@@ -115,14 +136,17 @@ export default async function curriculum(app: FastifyInstance) {
 
   app.put("/curriculum/levels/:id", async (req) => {
     const { id } = parse(idParam, req.params);
-    const b = parse(z.object({ name: z.string().trim().min(2).max(80).optional(), order: z.number().int().min(0).max(1000).optional() }), req.body);
+    const b = parse(
+      z.object({ name: z.string().trim().min(2).max(80).optional(), order: z.number().int().min(0).max(1000).optional(), ...levelMeta }),
+      req.body,
+    );
     const l = await prisma.level.findUnique({ where: { id } });
     if (!l) throw notFound("Level topilmadi");
     return prisma.$transaction(async (tx) => {
       const u = await tx.level.update({ where: { id }, data: b });
       await writeAudit(tx, {
         ...auditCtx(req), action: "level.update", entityType: "Level", entityId: id,
-        summary: `Bosqich tahrirlandi: ${levelLabel(u)}`, before: { name: l.name, order: l.order }, after: { name: u.name, order: u.order },
+        summary: `Bosqich tahrirlandi: ${levelLabel(u)}`, before: levelSnapshot(l), after: levelSnapshot(u),
       });
       return { ...u, label: levelLabel(u) };
     });
@@ -223,7 +247,10 @@ export default async function curriculum(app: FastifyInstance) {
       select: { id: true, code: true, name: true },
     });
     return {
-      level: { id: level.id, code: level.code, name: level.name, order: level.order, label: levelLabel(level) },
+      level: {
+        id: level.id, code: level.code, name: level.name, order: level.order, label: levelLabel(level),
+        audience: level.audience, cefr: level.cefr, weeks: level.weeks, description: level.description,
+      },
       stats: {
         topics: live.length,
         published: rows.filter((r) => r.status === "PUBLISHED").length,

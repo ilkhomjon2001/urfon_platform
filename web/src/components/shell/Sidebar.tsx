@@ -30,6 +30,7 @@ export function SidebarLink({
       to={item.to}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
+      title={item.hint}
       className={cn(
         "relative flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 font-label-lg text-label-lg transition-colors",
         active ? "bg-primary/[0.08] text-primary" : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
@@ -83,7 +84,11 @@ export function Sidebar({ nav, activeKey, badges, onLogout }: SidebarProps) {
       <nav aria-label="Asosiy menyu" className="scrollbar-thin flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
         {nav.items.map((item) => (
           <Fragment key={item.key}>
-            {item.dividerBefore ? <div className="mx-3 my-2 h-px bg-outline-variant" /> : null}
+            {item.section ? (
+              <div className="mt-3 px-3 pb-1 pt-2 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-muted">{item.section}</div>
+            ) : item.dividerBefore ? (
+              <div className="mx-3 my-2 h-px bg-outline-variant" />
+            ) : null}
             <SidebarLink item={item} active={item.key === activeKey} badge={badges?.[item.key]} />
           </Fragment>
         ))}
