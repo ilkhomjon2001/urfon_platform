@@ -8,11 +8,11 @@ import { planFor } from "../../lib/lesson-plans.js";
 import { parse, auditCtx, idParam, zGrade } from "../../lib/http.js";
 import { assertTeacherLesson } from "../../lib/access.js";
 import { writeAudit } from "../../lib/audit.js";
-import { awardCoins, coinRef, revokeCoins, touchStreak } from "../../lib/coins.js";
+import { awardCoins, coinRef, revokeCoins, syncGradeCoins, touchStreak } from "../../lib/coins.js";
 import { notifyParents } from "../../lib/notify.js";
 import { badRequest, notFound } from "../../lib/errors.js";
 import { startOfDayTz } from "../../lib/dates.js";
-import { GAMIFICATION } from "../../config/gamification.js";
+import { GAMIFICATION, RULES, gradeRule } from "../../config/gamification.js";
 import { ATT_LABEL, GRADE_NAME, dayMonthTz, hhmmTz, initials, levelDto, roomDto, scheduleText, topicLabel } from "./groups.js";
 
 type LessonWithGroup = Awaited<ReturnType<typeof assertTeacherLesson>>;
@@ -67,7 +67,7 @@ const patchBody = finishBody.extend({ title: z.string().trim().min(1).max(200).o
 const topicsBody = z.object({ topicIds: z.array(z.string().min(1).max(40)).max(5) });
 const activityBody = z.object({
   studentId: z.string().min(1).max(40),
-  amount: z.number().int().min(GAMIFICATION.coins.ACTIVITY.min).max(GAMIFICATION.coins.ACTIVITY.max),
+  amount: z.number().int().min(GAMIFICATION.activity.min).max(GAMIFICATION.activity.max),
   note: z.string().trim().max(200).nullable().optional(),
 });
 const skillEnum = z.enum(["SPEAKING", "LISTENING", "READING", "WRITING", "GRAMMAR", "VOCABULARY"]);
@@ -273,7 +273,7 @@ export default async function lessons(app: FastifyInstance) {
         createdAt: h.createdAt,
       })),
       nav: { prev, next },
-      coinRules: { attendance: GAMIFICATION.coins.ATTENDANCE, activity: GAMIFICATION.coins.ACTIVITY },
+      coinRules: { attendance: RULES.ATTENDANCE.kumush[0], activity: GAMIFICATION.activity },
     };
   });
 
@@ -461,18 +461,23 @@ export default async function lessons(app: FastifyInstance) {
 
         const wasPresent = !!ex && PRESENT_SET.has(ex.status);
         const isPresent = PRESENT_SET.has(it.status);
-        if (isPresent) {
+        // Tanga faqat oʻz vaqtida kelganga (jadval: «Darsga oʻz vaqtida kelish»); kechikkanga berilmaydi
+        if (it.status === "PRESENT") {
           // idempotent (ON CONFLICT DO NOTHING): turniket yoki oldingi belgi bergan bo'lsa qayta berilmaydi
           await awardCoins(tx, {
             studentId: it.studentId,
             reason: "ATTENDANCE",
+            rule: "ATTENDANCE",
             groupId: l.groupId,
             ...coinRef.lesson(id),
             createdById: req.auth.userId,
           });
-          if (isToday && !wasPresent) await touchStreak(tx, it.studentId, now);
         } else {
           await revokeCoins(tx, it.studentId, "ATTENDANCE", "lesson", id);
+        }
+        if (isPresent) {
+          if (isToday && !wasPresent) await touchStreak(tx, it.studentId, now);
+        } else {
           await revokeCoins(tx, it.studentId, "ACTIVITY", "lesson", id); // qatnashmagan bo'lsa faollik tangasi ham bekor
         }
 
@@ -618,6 +623,7 @@ export default async function lessons(app: FastifyInstance) {
         },
       });
       const label = GRADE_NAME[body.value];
+      await syncGradeCoins(tx, { studentId: s.id, groupId: l.groupId, ref: coinRef.grade(g.id), rule: gradeRule(body.value), note: title, createdById: req.auth.userId });
       await notifyParents(tx, s.id, {
         type: "grade.new",
         title: "Yangi baho",
@@ -666,6 +672,10 @@ export default async function lessons(app: FastifyInstance) {
       }
       const name = g.title || "Baho";
       const valueChanged = data.value !== undefined;
+      if (valueChanged) {
+        const coins = await syncGradeCoins(tx, { studentId: g.studentId, groupId: g.groupId, ref: coinRef.grade(id), rule: gradeRule(row.value), note: row.title, createdById: req.auth.userId });
+        if (g.submissionId) await tx.submission.update({ where: { id: g.submissionId }, data: { coinsAwarded: coins } });
+      }
       await writeAudit(tx, {
         ...auditCtx(req),
         action: "grade.update",
@@ -701,6 +711,7 @@ export default async function lessons(app: FastifyInstance) {
     if (g.kind !== "CLASSWORK" || g.submissionId) throw badRequest("Faqat darsdagi bahoni oʻchirish mumkin");
     return prisma.$transaction(async (tx) => {
       await tx.grade.delete({ where: { id } });
+      await revokeCoins(tx, g.studentId, "GRADE", "grade", id);
       await writeAudit(tx, {
         ...auditCtx(req),
         action: "grade.delete",

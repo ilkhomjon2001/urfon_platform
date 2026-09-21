@@ -7,8 +7,7 @@ import type { FastifyInstance } from "fastify";
 import type { CoinTransaction } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db.js";
-import { GAMIFICATION, coinTitle } from "../../config/gamification.js";
-import { earnedTotal } from "../../lib/coins.js";
+import { GAMIFICATION, type RuleKey, STAGES, coinTitle, ruleAmount, stageName } from "../../config/gamification.js";
 import { addDays, dbDateYmd, startOfMonthTz, ymdTz } from "../../lib/dates.js";
 import { paged, paginate, parse } from "../../lib/http.js";
 import { COIN_REASON_LABEL, activeIds, myEnrollments, primaryEnrollment } from "./shared.js";
@@ -109,20 +108,19 @@ export default async function achievements(app: FastifyInstance) {
     const streakDays = profile?.streakDays ?? 0;
     const activeToday = !!profile?.lastStreakDate && dbDateYmd(profile.lastStreakDate) === ymdTz(now);
 
-    // ── Unvon ──
-    const earned0 = await earnedTotal(prisma, studentId);
-    const t = coinTitle(earned0);
-    const titles = GAMIFICATION.titles;
-    const curIdx = titles.findIndex((x) => x.name === t.current);
-    const curMin = titles[curIdx]?.min ?? 0;
-    const nextMin = t.next ? titles[curIdx + 1]?.min ?? null : null;
+    // ── Bosqich (XP boʻyicha; «unvon» shakli saqlangan) ──
+    const xp = profile?.xp ?? 0;
+    const t = coinTitle(xp);
+    const curMin = STAGES[t.stage];
+    const nextMin = t.next ? STAGES[t.stage + 1] : null;
     const title = {
       current: t.current,
+      stage: t.stage,
       currentMin: curMin,
-      earned: earned0,
+      earned: xp,
       next: t.next && nextMin != null ? { name: t.next.name, remaining: t.next.remaining, target: nextMin } : null,
-      progress: nextMin != null ? Math.round(((earned0 - curMin) / (nextMin - curMin)) * 100) : 100,
-      all: titles.map((x) => ({ name: x.name, min: x.min, reached: earned0 >= x.min })),
+      progress: nextMin != null ? Math.round(((xp - curMin) / (nextMin - curMin)) * 100) : 100,
+      all: STAGES.map((min, i) => ({ name: stageName(i), min, reached: xp >= min })),
     };
 
     // ── O'z o'sishi: haftalik seriya (faqat yig'ilgan, ya'ni musbat) ──
@@ -140,13 +138,22 @@ export default async function achievements(app: FastifyInstance) {
     const byReason: Record<string, number> = {};
     for (const x of earned) if (x.createdAt >= weekStart) byReason[x.reason] = (byReason[x.reason] ?? 0) + x.amount;
 
-    // ── Qoidalar (config'dan) ──
-    const c = GAMIFICATION.coins;
+    // ── Qoidalar (config'dan; kumush — oʻquvchining hozirgi bosqichida) ──
+    const at = (k: RuleKey) => ruleAmount(k, t.stage);
+    const act = GAMIFICATION.activity;
     const rules = [
-      { key: "HOMEWORK_ON_TIME", title: "Uyga vazifa", description: "Uyga vazifani toʻliq va oʻz vaqtida topshirsangiz, ustoz tekshirgandan keyin beriladi.", amount: c.HOMEWORK_ON_TIME, min: null, max: null, hint: "Oʻz vaqtida topshirilsa" },
-      { key: "ATTENDANCE", title: "Darsga kelish", description: "Har bir darsga kelganingiz uchun — tayyorgarlik va intizom bilan qatnashing.", amount: c.ATTENDANCE, min: null, max: null, hint: "Har bir dars uchun" },
-      { key: "ACTIVITY", title: "Darsdagi faollik", description: "Darsdagi dialoglar, savollarga javob va ustozning maxsus ragʻbati.", amount: null, min: c.ACTIVITY.min, max: c.ACTIVITY.max, hint: "Ustoz belgilaydi" },
-      { key: "STREAK", title: "Kunlik seriya", description: "Har kuni biror foydali ish qilsangiz: vazifa topshirish yoki darsga kelish.", amount: c.STREAK, min: null, max: null, hint: "Har kuni" },
+      { key: "ATTENDANCE", title: "Darsga oʻz vaqtida kelish", description: "Har bir darsga kechikmasdan kelganingiz uchun. Kechiksangiz tanga berilmaydi.", amount: at("ATTENDANCE").kumush, xp: at("ATTENDANCE").xp, min: null, max: null, hint: "Har bir dars uchun" },
+      {
+        key: "GRADE", title: "Baholar",
+        description: `Uy vazifasi, darsdagi baho va imtihon uchun: 3 → +${at("GRADE_3").kumush}, 4 → +${at("GRADE_4").kumush}, 5 → +${at("GRADE_5").kumush}, 5+ (95–100 ball) → +${at("GRADE_5P").kumush} kumush.`,
+        amount: null, xp: at("GRADE_5P").xp, min: at("GRADE_3").kumush, max: at("GRADE_5P").kumush, hint: "Bahoga qarab",
+      },
+      { key: "ACTIVITY", title: "Darsdagi faollik", description: "Darsdagi dialoglar, savollarga javob va ustozning maxsus ragʻbati.", amount: null, xp: null, min: act.min, max: act.max, hint: "Ustoz belgilaydi" },
+      {
+        key: "CONTEST", title: "Musobaqa va tanlovlar",
+        description: `Ichki, shahar, respublika va xalqaro musobaqalar, tanlovlar va 3 oylik taqdimot. Ishtirok uchun ham beriladi: ichki musobaqada +${at("INTERNAL_P").kumush}, xalqaroda 1-oʻrin — +${at("INTL_1").kumush}.`,
+        amount: null, xp: null, min: at("INTERNAL_P").kumush, max: at("INTL_1").kumush, hint: "Markaz beradi",
+      },
     ];
 
     // ── Shaxsiy nishonlar ──
@@ -215,7 +222,7 @@ export default async function achievements(app: FastifyInstance) {
       now,
       balance,
       title,
-      streak: { days: streakDays, activeToday, bonus: c.STREAK },
+      streak: { days: streakDays, activeToday, bonus: 0 },
       growth: {
         thisWeek,
         lastWeek,

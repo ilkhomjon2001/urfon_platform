@@ -132,7 +132,7 @@ function Hero({ hw }: { hw: HomeworkDetail }) {
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2.5 py-0.5 font-label-sm text-label-sm text-on-tertiary-fixed">
               <Icon name="toll" filled size={14} />
-              Mukofot: +{hw.reward.onTime} tanga
+              5 baho uchun: +{hw.reward.onTime} kumush
             </span>
           </div>
           <h1 className="mt-3 break-words font-headline-xl-mobile text-headline-xl-mobile sm:font-headline-xl sm:text-headline-xl">{hw.title}</h1>
@@ -356,7 +356,7 @@ function AnswerEditor({ hw }: { hw: HomeworkDetail }) {
   const submit = async () => {
     try {
       const r = await api.post<SubmitResponse>(`/student/homework/${hw.id}/submit`, payload());
-      toast.success(r.expectedCoins ? `Vazifa topshirildi! Ustoz tekshirgach +${r.expectedCoins} tanga olasiz.` : "Vazifa topshirildi!");
+      toast.success(r.expectedCoins ? `Vazifa topshirildi! Ustoz baholagach, bahoga qarab kumush olasiz (5 uchun +${r.expectedCoins}).` : "Vazifa topshirildi!");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["student"] }),
         qc.invalidateQueries({ queryKey: ["me", "nav-badges"] }),
@@ -521,7 +521,7 @@ function AnswerEditor({ hw }: { hw: HomeworkDetail }) {
           <Icon name="info" size={18} className="mt-px text-primary" />
           <p>
             Topshirilgandan soʻng holat avtomatik ravishda <b>«Tekshiruvda»</b> ga oʻzgaradi va {teacherName ? `ustoz ${teacherName}` : "ustoz"} tekshiruviga yuboriladi.
-            Tanga ustoz tekshirgandan keyin beriladi: oʻz vaqtida topshirilsa <b>+{hw.reward.onTime} tanga</b>.
+            Kumush ustoz baholagandan keyin, bahoga qarab beriladi: 5 baho uchun <b>+{hw.reward.onTime}</b>.
           </p>
         </div>
       </CardContent>
@@ -534,8 +534,9 @@ function AnswerEditor({ hw }: { hw: HomeworkDetail }) {
         description={
           `Topshirilgandan soʻng javobni oʻzgartirib boʻlmaydi. ${teacherName ? `Ustoz ${teacherName}` : "Ustoz"} tekshiradi.` +
           (hw.overdue
-            ? " Muddat oʻtgan — vazifa kechikkan deb belgilanadi va bu safar tanga berilmaydi."
-            : ` Oʻz vaqtida topshirilgani uchun tekshiruvdan keyin +${hw.reward.onTime} tanga olasiz.`)
+            ? " Muddat oʻtgan — vazifa kechikkan deb belgilanadi."
+            : "") +
+          ` Kumush bahoga qarab beriladi: 5 baho uchun +${hw.reward.onTime}.`
         }
         confirmLabel="Topshirish"
         cancelLabel="Hali emas"
@@ -671,8 +672,8 @@ function SubmittedView({ hw }: { hw: HomeworkDetail }) {
       <CardContent className="flex flex-col gap-4">
         <Alert tone={s.isLate ? "warning" : "primary"} icon="toll">
           {s.isLate
-            ? "Vazifa muddatidan keyin topshirildi — bu safar tanga berilmaydi. Keyingi vazifani oʻz vaqtida topshirishga harakat qiling."
-            : `Ustoz tekshirgach, oʻz vaqtida topshirganingiz uchun +${hw.reward.onTime} tanga olasiz. Natija va izoh shu sahifada koʻrinadi.`}
+            ? `Vazifa muddatidan keyin topshirildi. Ustoz baholagach, bahoga qarab kumush olasiz (5 uchun +${hw.reward.onTime}). Keyingi vazifani oʻz vaqtida topshiring.`
+            : `Ustoz baholagach, bahoga qarab kumush olasiz: 5 baho uchun +${hw.reward.onTime}. Natija va izoh shu sahifada koʻrinadi.`}
         </Alert>
         <AnswerReadonly hw={hw} />
       </CardContent>
@@ -813,10 +814,10 @@ function StreakCard({ hw }: { hw: HomeworkDetail }) {
   else if (s.days > 0)
     body = (
       <>
-        Bugun topshirsangiz, <b>{s.days} kunlik</b> seriyangiz <b>{s.days + 1} kunga</b> uzayadi (+{s.bonus} tanga).
+        Bugun topshirsangiz, <b>{s.days} kunlik</b> seriyangiz <b>{s.days + 1} kunga</b> uzayadi.
       </>
     );
-  else body = <>Bugun topshirsangiz, yangi seriya boshlanadi. Har kungi faollik uchun +{s.bonus} tanga.</>;
+  else body = <>Bugun topshirsangiz, yangi seriya boshlanadi — har kuni biroz oʻrganish eng yaxshi odat.</>;
   return (
     <div className="flex items-start gap-3 rounded-xl bg-gradient-to-br from-tertiary-fixed to-gold p-5 shadow-card">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-lowest">

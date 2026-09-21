@@ -17,8 +17,8 @@ import { writeAudit } from "../../lib/audit.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import { notify, notifyParents } from "../../lib/notify.js";
 import { attachFiles, deleteStored } from "../../lib/storage.js";
-import { awardCoins, coinRef } from "../../lib/coins.js";
-import { GAMIFICATION } from "../../config/gamification.js";
+import { coinRef, syncGradeCoins } from "../../lib/coins.js";
+import { RULES, gradeRule, homeworkReward } from "../../config/gamification.js";
 import { addDays, startOfDayTz, ymdTz } from "../../lib/dates.js";
 
 // ───────────────────────── yordamchilar ─────────────────────────
@@ -184,7 +184,7 @@ function hwDto(h: HwRow, stats: Awaited<ReturnType<typeof statsFor>>, withConten
     type: h.type,
     dueAt: h.dueAt,
     createdAt: h.createdAt,
-    coinReward: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+    coinReward: homeworkReward(0), // 5 baho uchun (0-bosqich); yuqori bosqichda koʻproq
     group: h.group,
     lesson: h.lesson,
     topic: h.topic,
@@ -218,8 +218,8 @@ function subDto(s: SubRow, detail = false) {
     feedback: s.feedback,
     coinsAwarded: s.coinsAwarded,
     reviewedAt: s.reviewedAt,
-    // "+10 tanga" ishorasi: o'z vaqtida topshirilgan va hali tanga berilmagan bo'lsa
-    coinsOnReview: !late && s.coinsAwarded === 0 ? GAMIFICATION.coins.HOMEWORK_ON_TIME : 0,
+    // Baho uchun tanga ishorasi (5 baho, 0-bosqich); hali tanga berilmagan boʻlsa
+    coinsOnReview: s.coinsAwarded === 0 ? homeworkReward(0) : 0,
     student: { id: s.student.id, fullName: s.student.fullName, code: s.student.studentProfile?.code ?? null },
     homework: { id: s.homework.id, title: s.homework.title, type: s.homework.type, dueAt: s.homework.dueAt, group: s.homework.group },
     files: s.files,
@@ -368,7 +368,8 @@ export default async function homework(app: FastifyInstance) {
       reviewedToday,
       todayTarget: reviewedToday + awaiting.length,
       reviewedByDay: days,
-      coinsOnTime: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+      coinsOnTime: homeworkReward(0),
+      coinsByGrade: { 3: RULES.GRADE_3.kumush[0], 4: RULES.GRADE_4.kumush[0], 5: RULES.GRADE_5.kumush[0] },
     };
   });
 
@@ -492,7 +493,7 @@ export default async function homework(app: FastifyInstance) {
           type: body.type,
           content,
           dueAt: body.dueAt,
-          coinReward: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+          coinReward: homeworkReward(0),
           createdById: me,
         },
       });
@@ -728,22 +729,20 @@ export default async function homework(app: FastifyInstance) {
         },
         update: { value: body.score, comment: feedback, givenById: me },
       });
+      // Baho uchun tanga (jadval: 3 → GRADE_3, 4 → GRADE_4, 5 → GRADE_5; oʻquvchi bosqichiga qarab).
+      // Baho oʻzgarsa eski tanga bekor qilinib, yangisi beriladi (syncGradeCoins).
       let coinsNow = 0;
       let coinsTotal = s.coinsAwarded;
-      // tanga faqat bir marta: yozuvda allaqachon berilgan bo'lsa ham, unique ref (coinRef) bo'yicha ham
-      if (!late && s.coinsAwarded === 0) {
-        // idempotent: coinRef.submission — qayta baholashda ikkinchi marta berilmaydi (ON CONFLICT DO NOTHING)
-        const t = await awardCoins(tx, {
+      if (first || prevScore !== body.score || !(await tx.coinTransaction.findFirst({ where: { studentId: s.studentId, reason: "GRADE", ...coinRef.grade(grade.id) } }))) {
+        coinsTotal = await syncGradeCoins(tx, {
           studentId: s.studentId,
-          reason: "HOMEWORK_ON_TIME",
           groupId: s.homework.groupId,
-          ...coinRef.submission(id),
-          createdById: me,
+          ref: coinRef.grade(grade.id),
+          rule: gradeRule(body.score),
           note: hwTitle,
+          createdById: me,
         });
-        if (t) coinsNow = t.amount;
-        const ct = t ?? (await tx.coinTransaction.findFirst({ where: { studentId: s.studentId, reason: "HOMEWORK_ON_TIME", ...coinRef.submission(id) } }));
-        coinsTotal = ct?.amount ?? 0;
+        coinsNow = Math.max(0, coinsTotal - s.coinsAwarded);
       }
       const updated = await tx.submission.update({
         where: { id },

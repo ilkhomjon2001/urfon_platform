@@ -2,7 +2,7 @@
 // Faqat o'z ma'lumoti (req.auth.userId). Boshqa bolalar bilan solishtirish yo'q (KANON §8).
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.js";
-import { GAMIFICATION, coinTitle } from "../../config/gamification.js";
+import { GAMIFICATION, coinTitle, homeworkReward } from "../../config/gamification.js";
 import { earnedTotal } from "../../lib/coins.js";
 import { addDays, dbDateYmd, endOfDayTz, startOfDayTz, ymdTz } from "../../lib/dates.js";
 import {
@@ -188,7 +188,7 @@ export default async function dashboard(app: FastifyInstance) {
           overdue: h.dueAt < now,
           group: h.group,
           topic: h.topic ? { unit: h.topic.unit, label: topicLabel(h.topic) } : null,
-          coinReward: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+          coinReward: homeworkReward(profile?.xp),
           state,
           stateLabel: HW_STATE_LABEL[state],
           progress: {
@@ -253,8 +253,8 @@ export default async function dashboard(app: FastifyInstance) {
         weekStart,
         lastWeekStart,
         streakDays: profile?.streakDays ?? 0,
-        streakBonus: GAMIFICATION.coins.STREAK,
-        homeworkReward: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+        streakBonus: 0,
+        homeworkReward: homeworkReward(profile?.xp),
         grades: { current: avg(cur30), previous: avg(prev30) },
       },
       grades: {

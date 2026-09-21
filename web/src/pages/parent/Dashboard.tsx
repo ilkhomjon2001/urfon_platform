@@ -709,7 +709,7 @@ function CoinsCard({ coins, firstName }: { coins: DashboardData["metrics"]["coin
         </p>
         {coins.next ? (
           <p className="text-body-sm text-on-surface-muted">
-            «{coins.next.name}» unvonigacha {fmtNum(coins.next.remaining)} tanga
+            {coins.next.name}gacha {fmtNum(coins.next.remaining)} XP
           </p>
         ) : null}
       </CardContent>

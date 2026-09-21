@@ -51,6 +51,7 @@ import { useDebouncedValue, useSearchParamState } from "@/lib/hooks";
 import { toastError, useApiMutation, useApiQuery } from "@/lib/query";
 import type { FileMeta, Paginated } from "@/lib/types";
 import { uploadFiles } from "./b/materials";
+import { RulesTab } from "./b/shop-rules";
 
 const KEY = ["admin", "shop"];
 const INV = [KEY, ["me", "nav-badges"]];
@@ -72,13 +73,13 @@ type OrdersPage = Paginated<ShopOrder> & { counts: Record<ShopOrderStatus, numbe
 
 /** Boʻsh doʻkon uchun namuna sovgʻalar (narxlar: oʻquvchi haftasiga ≈ 60 tanga yigʻadi). */
 const SAMPLES: { title: string; description: string; category: ShopCategory; price: number; stock: number | null; perStudentLimit: number | null }[] = [
-  { title: "Stikerlar toʻplami", description: "Rangli ingliz tilidagi stikerlar — daftar va noutbuk uchun.", category: "GIFT", price: 60, stock: 30, perStudentLimit: null },
-  { title: "URFON ruchkasi", description: "Logotipli koʻk ruchka.", category: "STATIONERY", price: 80, stock: 50, perStudentLimit: null },
-  { title: "Daftar (lugʻat uchun)", description: "Yangi soʻzlarni yozib borish uchun 48 varaqli daftar.", category: "STATIONERY", price: 120, stock: 30, perStudentLimit: null },
-  { title: "Uy vazifasidan bir marta ozod", description: "Istalgan bitta uy vazifasini bajarmaslik huquqi (ustozga oldindan aytiladi).", category: "PRIVILEGE", price: 150, stock: null, perStudentLimit: 2 },
-  { title: "Darsda musiqa tanlash", description: "Keyingi darsning tanaffusida guruh uchun qoʻshiq tanlaysiz.", category: "PRIVILEGE", price: 100, stock: null, perStudentLimit: null },
-  { title: "URFON bloknoti", description: "Qattiq muqovali brendli bloknot.", category: "SWAG", price: 250, stock: 20, perStudentLimit: null },
-  { title: "Ingliz tilida hikoyalar kitobi", description: "Darajangizga mos graded reader kitob.", category: "GIFT", price: 600, stock: 10, perStudentLimit: null },
+  { title: "Stikerlar toʻplami", description: "Rangli ingliz tilidagi stikerlar — daftar va noutbuk uchun.", category: "GIFT", price: 100, stock: 30, perStudentLimit: null },
+  { title: "URFON ruchkasi", description: "Logotipli koʻk ruchka.", category: "STATIONERY", price: 100, stock: 50, perStudentLimit: null },
+  { title: "Daftar (lugʻat uchun)", description: "Yangi soʻzlarni yozib borish uchun 48 varaqli daftar.", category: "STATIONERY", price: 250, stock: 30, perStudentLimit: null },
+  { title: "Uy vazifasidan bir marta ozod", description: "Istalgan bitta uy vazifasini bajarmaslik huquqi (ustozga oldindan aytiladi).", category: "PRIVILEGE", price: 300, stock: null, perStudentLimit: 2 },
+  { title: "Darsda musiqa tanlash", description: "Keyingi darsning tanaffusida guruh uchun qoʻshiq tanlaysiz.", category: "PRIVILEGE", price: 200, stock: null, perStudentLimit: null },
+  { title: "URFON bloknoti", description: "Qattiq muqovali brendli bloknot.", category: "SWAG", price: 375, stock: 20, perStudentLimit: null },
+  { title: "Ingliz tilida hikoyalar kitobi", description: "Darajangizga mos graded reader kitob.", category: "GIFT", price: 750, stock: 10, perStudentLimit: null },
   { title: "URFON futbolkasi", description: "Oʻlchamni administratorga ayting.", category: "SWAG", price: 1000, stock: 10, perStudentLimit: 1 },
 ];
 
@@ -124,7 +125,7 @@ export default function AdminShopPage() {
         <StatCard label="Oʻquvchilar qoʻlida" value={s ? fmtNum(s.circulating) : "—"} unit="tanga" icon="toll" iconTone="gold" sub="hali sarflanmagan tangalar" loading={summaryQ.isLoading} />
       </div>
 
-      <Tabs value={tab === "items" ? "items" : "orders"} onValueChange={setTab}>
+      <Tabs value={tab === "items" || tab === "rules" ? tab : "orders"} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="orders" icon="receipt_long" count={s?.pending || undefined}>
             Buyurtmalar
@@ -132,12 +133,18 @@ export default function AdminShopPage() {
           <TabsTrigger value="items" icon="storefront" count={s ? s.activeItems : undefined}>
             Vitrina
           </TabsTrigger>
+          <TabsTrigger value="rules" icon="emoji_events">
+            Qoidalar va mukofotlar
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="orders" className="mt-5">
           <OrdersTab />
         </TabsContent>
         <TabsContent value="items" className="mt-5">
           <ItemsTab items={itemsQ.data?.items} loading={itemsQ.isLoading} onEdit={setItemDialog} top={s?.top ?? []} />
+        </TabsContent>
+        <TabsContent value="rules" className="mt-5">
+          <RulesTab />
         </TabsContent>
       </Tabs>
 
@@ -352,7 +359,7 @@ function ItemsTab({ items, loading, onEdit, top }: { items: AdminItem[] | undefi
       <Alert tone="primary" icon="lightbulb" title="Doʻkon qanday ishlaydi?">
         <ul className="flex list-disc flex-col gap-1 pl-4">
           <li>
-            Oʻquvchi darsga kelish (+5), oʻz vaqtida vazifa (+10), faollik (+1…5) va kunlik seriya (+2) uchun tanga yigʻadi — haftasiga taxminan <b>50–70 tanga</b>.
+            Oʻquvchi darsga oʻz vaqtida kelish, baholar, musobaqa va tanlovlar uchun <b>XP</b> (tajriba) va <b>kumush</b> oladi. XP oshgan sari bosqich oshadi va har bir harakat uchun koʻproq kumush beriladi — batafsil «Qoidalar va mukofotlar» boʻlimida.
           </li>
           <li>
             Oʻquvchi <b>oʻz kabinetidan</b> yoki ota-onasi <b>ota-ona kabinetidan</b> sovgʻani tanlaydi — tanga darhol yechiladi, buyurtma «Buyurtmalar» navbatiga tushadi.

@@ -662,7 +662,7 @@ function EfficiencyCard({ s, loading }: { s?: HwStatsSummary; loading: boolean }
           {s && s.coinsOnTime ? (
             <div className="flex items-start gap-2 text-[11.5px] leading-snug text-on-surface-muted">
               <Icon name="toll" size={17} className="shrink-0 text-tertiary" />
-              <span>Oʻz vaqtida topshirilgan har bir vazifa tekshirilganda oʻquvchiga +{s.coinsOnTime} kumush tanga beriladi.</span>
+              <span>Baholangan har bir vazifa uchun oʻquvchi bahoga qarab kumush oladi: 5 → +{s.coinsOnTime} (yuqori bosqichda koʻproq), 3 dan past bahoga berilmaydi.</span>
             </div>
           ) : null}
         </>

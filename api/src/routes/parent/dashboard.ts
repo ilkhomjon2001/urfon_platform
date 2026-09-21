@@ -3,7 +3,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.js";
 import { config } from "../../config.js";
-import { coinTitle } from "../../config/gamification.js";
+import { coinTitle, homeworkReward } from "../../config/gamification.js";
 import { earnedTotal } from "../../lib/coins.js";
 import { parse } from "../../lib/http.js";
 import { addDays, endOfDayTz, startOfDayTz, startOfMonthTz } from "../../lib/dates.js";
@@ -202,7 +202,7 @@ export default async function dashboard(app: FastifyInstance) {
         type: h.type,
         dueAt: h.dueAt,
         lessonId: h.lessonId,
-        coinReward: h.coinReward,
+        coinReward: homeworkReward(child.coins.xp), // 5 baho uchun kumush (farzand bosqichida)
         groupName: h.group.name,
         submissionStatus: h.submissions[0]?.status ?? null,
       }));

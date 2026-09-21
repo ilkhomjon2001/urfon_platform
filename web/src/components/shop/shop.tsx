@@ -1,6 +1,6 @@
 // Tanga doʻkoni — oʻquvchi, ota-ona va admin sahifalari uchun umumiy turlar va komponentlar.
 import { useState, type ReactNode } from "react";
-import { Badge, Button, Dialog, EmptyState, Icon, Skeleton } from "@/components/ui";
+import { Badge, Button, Checkbox, Dialog, EmptyState, Icon, SearchInput, Select, Skeleton } from "@/components/ui";
 import { useFileObjectUrl } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { fmtNum, fmtRelDateTime } from "@/lib/format";
@@ -224,18 +224,68 @@ export function CatalogSkeleton() {
 /** Vitrina: filtr + kartalar toʻri. */
 export function CatalogGrid({ catalog, onBuy, buyLabel, empty }: { catalog: Catalog; onBuy: (i: CatalogItem) => void; buyLabel?: string; empty?: ReactNode }) {
   const [cat, setCat] = useState<ShopCategory | "all">("all");
+  const [q, setQ] = useState("");
+  const [affordable, setAffordable] = useState(false);
+  const [sort, setSort] = useState<"default" | "cheap" | "expensive">("default");
   if (!catalog.items.length) {
     return <>{empty ?? <EmptyState icon="storefront" title="Doʻkon hali boʻsh" description="Tez orada markaz bu yerga sovgʻalar qoʻshadi. Hozircha tangalarni yigʻishda davom eting!" />}</>;
   }
-  const list = cat === "all" ? catalog.items : catalog.items.filter((i) => i.category === cat);
+  const needle = q.trim().toLocaleLowerCase("uz");
+  const list = catalog.items
+    .filter((i) => cat === "all" || i.category === cat)
+    .filter((i) => !needle || i.title.toLocaleLowerCase("uz").includes(needle) || (i.description ?? "").toLocaleLowerCase("uz").includes(needle))
+    .filter((i) => !affordable || i.canBuy)
+    .sort((a, b) => (sort === "cheap" ? a.price - b.price : sort === "expensive" ? b.price - a.price : 0));
+  const filtered = cat !== "all" || !!needle || affordable;
   return (
     <div className="flex flex-col gap-4">
-      <CategoryFilter items={catalog.items} value={cat} onChange={setCat} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {list.map((i) => (
-          <CatalogCard key={i.id} item={i} balance={catalog.balance} onBuy={onBuy} buyLabel={buyLabel} />
-        ))}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <CategoryFilter items={catalog.items} value={cat} onChange={setCat} />
+        <div className="flex flex-wrap items-center gap-3">
+          <SearchInput value={q} onValueChange={setQ} placeholder="Sovgʻa nomi" className="w-full sm:w-56" wrapperClassName="w-full sm:w-auto" />
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+            aria-label="Saralash"
+            wrapperClassName="w-40"
+            options={[
+              { value: "default", label: "Tavsiya etilgan" },
+              { value: "cheap", label: "Avval arzonlari" },
+              { value: "expensive", label: "Avval qimmatlari" },
+            ]}
+          />
+          <Checkbox checked={affordable} onChange={(e) => setAffordable(e.target.checked)} label="Tangam yetadiganlari" />
+        </div>
       </div>
+      {list.length ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {list.map((i) => (
+            <CatalogCard key={i.id} item={i} balance={catalog.balance} onBuy={onBuy} buyLabel={buyLabel} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          compact
+          icon={affordable ? "toll" : "search_off"}
+          title={affordable && !needle && cat === "all" ? "Hozircha tanga yetadigan sovgʻa yoʻq" : "Mos sovgʻa topilmadi"}
+          description={affordable ? "Darsga oʻz vaqtida keling va yaxshi baho oling — tangalar tez yigʻiladi." : "Filtrni oʻzgartirib koʻring."}
+          action={
+            filtered ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCat("all");
+                  setQ("");
+                  setAffordable(false);
+                }}
+              >
+                Filtrni tozalash
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
     </div>
   );
 }

@@ -9,6 +9,10 @@ import { badRequest, notFound } from "../../lib/errors.js";
 import { auditCtx, idParam, paged, paginate, parse } from "../../lib/http.js";
 import { startOfMonthTz } from "../../lib/dates.js";
 import { deleteStored } from "../../lib/storage.js";
+import { randomUUID } from "node:crypto";
+import { AWARD_RULES, GAMIFICATION, RULES, RULE_GROUPS, STAGES, type RuleKey, ruleAmount, stageOf } from "../../config/gamification.js";
+import { awardCoins, coinRef } from "../../lib/coins.js";
+import { notify, notifyParents } from "../../lib/notify.js";
 import {
   SHOP_REF, cancelOrder, catalogFor, deliverOrder, itemDto, itemSelect, orderDto, orderInclude, orderNo, placeOrder,
 } from "../../lib/shop.js";
@@ -273,5 +277,72 @@ export default async function shop(app: FastifyInstance) {
       });
     });
     return orderDto(await prisma.shopOrder.findUniqueOrThrow({ where: { id }, include: orderInclude }));
+  });
+
+  // ───────────── Qoidalar jadvali va mukofot berish (musobaqa, tanlov, taqdimot) ─────────────
+  app.get("/shop/rules", async () => ({
+    stages: STAGES,
+    activity: GAMIFICATION.activity,
+    groups: RULE_GROUPS.map((g) => ({ key: g.key, title: g.title, rules: g.rules.map((k) => ({ key: k, title: RULES[k].title, xp: RULES[k].xp, kumush: RULES[k].kumush })) })),
+    awardable: AWARD_RULES,
+  }));
+
+  app.get("/shop/groups", async () => {
+    const rows = await prisma.group.findMany({
+      where: { status: { not: "FINISHED" } },
+      orderBy: { code: "asc" },
+      select: { id: true, code: true, name: true, _count: { select: { students: { where: { status: "ACTIVE" } } } } },
+    });
+    return { items: rows.map((g) => ({ id: g.id, code: g.code, name: g.name, students: g._count.students })) };
+  });
+
+  app.post("/shop/awards", async (req, reply) => {
+    const body = parse(
+      z
+        .object({
+          rule: z.enum(AWARD_RULES as [RuleKey, ...RuleKey[]]),
+          note: z.string().trim().min(2, "Musobaqa yoki tadbir nomini yozing").max(200),
+          studentIds: z.array(zId).max(200).default([]),
+          groupId: zId.nullish(),
+        })
+        .refine((b) => b.studentIds.length > 0 || !!b.groupId, "Oʻquvchi yoki guruhni tanlang"),
+      req.body,
+    );
+    const ids = new Set(body.studentIds);
+    if (body.groupId) {
+      const members = await prisma.groupStudent.findMany({ where: { groupId: body.groupId, status: "ACTIVE" }, select: { studentId: true } });
+      for (const m of members) ids.add(m.studentId);
+    }
+    const students = await prisma.user.findMany({
+      where: { id: { in: [...ids] }, role: "STUDENT", studentProfile: { status: { not: "LEFT" } } },
+      select: { id: true, fullName: true, studentProfile: { select: { xp: true } } },
+    });
+    if (!students.length) throw badRequest("Mukofot beriladigan faol oʻquvchi topilmadi");
+    const rule = RULES[body.rule];
+    const reason = body.rule === "PRESENTATION" ? "PRESENTATION" : "CONTEST";
+
+    const given = await prisma.$transaction(async (tx) => {
+      const out: { studentId: string; fullName: string; stage: number; kumush: number; xp: number }[] = [];
+      for (const s of students) {
+        const stage = stageOf(s.studentProfile?.xp ?? 0);
+        const t = await awardCoins(tx, {
+          studentId: s.id, reason, rule: body.rule, groupId: body.groupId ?? null,
+          ...coinRef.award(randomUUID()), note: `${rule.title}: ${body.note}`, createdById: req.auth.userId,
+        });
+        if (!t) continue;
+        out.push({ studentId: s.id, fullName: s.fullName, stage, kumush: t.amount, xp: t.xp });
+        const text = `${rule.title} — «${body.note}»: +${t.xp} XP va +${t.amount} kumush.`;
+        await notify(tx, { userId: s.id, type: "coins.award", telegram: false, title: "Tabriklaymiz! Mukofot", body: text, link: "/oquvchi/yutuqlar" });
+        await notifyParents(tx, s.id, { type: "coins.award", title: "Farzandingiz mukofotlandi", body: `${s.fullName}: ${text}`, link: "/ota-ona/dokon" });
+      }
+      await writeAudit(tx, {
+        ...auditCtx(req), action: "coins.award", entityType: "CoinTransaction", entityId: body.rule,
+        summary: `${rule.title} — «${body.note}»: ${out.length} ta oʻquvchiga (${out.map((o) => `${o.fullName} +${o.kumush}`).join(", ")})`,
+        after: { rule: body.rule, note: body.note, students: out.map((o) => ({ id: o.studentId, stage: o.stage, kumush: o.kumush, xp: o.xp })) },
+      });
+      return out;
+    });
+    reply.code(201);
+    return { rule: body.rule, title: rule.title, given, preview: ruleAmount(body.rule, 0) };
   });
 }

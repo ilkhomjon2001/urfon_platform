@@ -9,7 +9,8 @@ import type { AttRec, LessonRec } from "./lessons.js";
 import type { Model, StudentPlan } from "./plan.js";
 import { DAY, MIN, Rng, addMin, at, cid, dateOnly, happened, sum, ymdAdd, ymdOf } from "./util.js";
 
-const C = GAMIFICATION.coins;
+// Demo tarix eski (2026-09-21 gacha) qoidalar bilan yoziladi; yigʻilgan tanga XP sifatida ham hisoblanadi.
+const C = { HOMEWORK_ON_TIME: 10, ATTENDANCE: 5, STREAK: 2, ACTIVITY: GAMIFICATION.activity } as const;
 type Row = Prisma.CoinTransactionCreateManyInput;
 export type CoinPlan = { rows: Row[]; balance: Map<string, number>; streak: Map<string, { days: number; last: string | null }> };
 
@@ -27,7 +28,7 @@ export function planCoins(m: Model, lessons: Map<string, LessonRec[]>, att: AttR
   };
   const sanjar = m.staff.get("sanjar")!.id;
   const push = (studentId: string, reason: CoinReason, amount: number, createdAt: Date, extra: Partial<Row> = {}) => {
-    const r: Row = { id: cid(), studentId, amount, reason, createdAt, refType: null, refId: null, groupId: null, note: null, createdById: null, ...extra };
+    const r: Row = { id: cid(), studentId, amount, xp: amount > 0 ? amount : 0, reason, createdAt, refType: null, refId: null, groupId: null, note: null, createdById: null, ...extra };
     rows.push(r);
     return r;
   };
@@ -232,11 +233,13 @@ export function planCoins(m: Model, lessons: Map<string, LessonRec[]>, att: AttR
 export async function writeCoins(db: Db, m: Model, cp: CoinPlan) {
   const size = 3000;
   for (let i = 0; i < cp.rows.length; i += size) await db.coinTransaction.createMany({ data: cp.rows.slice(i, i + size) });
+  const xpBy = new Map<string, number>();
+  for (const r of cp.rows) xpBy.set(r.studentId, (xpBy.get(r.studentId) ?? 0) + (r.xp ?? 0));
   for (const s of m.students) {
     const st = cp.streak.get(s.id) ?? { days: 0, last: null };
     await db.studentProfile.update({
       where: { userId: s.id },
-      data: { coinBalance: cp.balance.get(s.id) ?? 0, streakDays: st.days, lastStreakDate: st.last ? dateOnly(st.last) : null },
+      data: { coinBalance: cp.balance.get(s.id) ?? 0, xp: xpBy.get(s.id) ?? 0, streakDays: st.days, lastStreakDate: st.last ? dateOnly(st.last) : null },
     });
   }
   void ymdOf;

@@ -80,7 +80,8 @@ export async function registerTurnstileArrival(studentId: string, fullName: stri
       const att = await tx.attendance.create({
         data: { lessonId: lesson.id, studentId, status, arrivedAt: at, source: "TURNSTILE" },
       });
-      await awardCoins(tx, { studentId, reason: "ATTENDANCE", groupId: lesson.groupId, ...coinRef.lesson(lesson.id), at });
+      // Tanga faqat oʻz vaqtida kelganga
+      if (status === "PRESENT") await awardCoins(tx, { studentId, reason: "ATTENDANCE", rule: "ATTENDANCE", groupId: lesson.groupId, ...coinRef.lesson(lesson.id), at });
       await notifyParents(tx, studentId, {
         type: "attendance.arrived",
         title: "Markazga keldi",

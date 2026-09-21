@@ -133,7 +133,7 @@ function HomeworkCard({ h, now }: { h: HomeworkItem; now: string }) {
           </span>
           <span className="flex items-center gap-1">
             <Icon name="toll" size={16} className="text-tertiary" />
-            Oʻz vaqtida topshirsa +{h.coinReward} tanga
+            5 baho olsa +{h.coinReward} kumush
           </span>
           {h.lesson ? (
             <Link to={`${PARENT_BASE}/darslar/${h.lesson.id}`} className="flex items-center gap-1 text-primary hover:underline">

@@ -78,7 +78,7 @@ export default function StudentShopPage() {
                 </a>
               ) : (
                 <p className="max-w-sm text-body-sm text-on-primary/80">
-                  Tangalarni sarflash unvoningizga taʼsir qilmaydi — unvon jami yigʻilgan tangalar boʻyicha beriladi.
+                  Xarid qilish bosqichingizga taʼsir qilmaydi — bosqich XP (tajriba) boʻyicha oshadi, XP esa sarflanmaydi.
                 </p>
               )}
             </div>

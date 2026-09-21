@@ -289,7 +289,7 @@ export default function TeacherLessonConductPage() {
         <Card className="min-w-0 lg:col-span-8 lg:col-start-1 lg:row-span-3 lg:row-start-1">
           <CardHeader
             title="Davomat va faollik"
-            description={`Keldi / Kechikdi: +${d.coinRules.attendance} tanga · Faollik: +${d.coinRules.activity.min}…+${d.coinRules.activity.max} · Kelmadi yoki kechikdi — ota-onaga xabar`}
+            description={`Oʻz vaqtida keldi: +${d.coinRules.attendance} kumush (kechikkanga berilmaydi) · Faollik: +${d.coinRules.activity.min}…+${d.coinRules.activity.max} · Kelmadi yoki kechikdi — ota-onaga xabar`}
             badge={
               <Badge tone="primary">
                 {counts.total - counts.unmarked}/{counts.total} belgilandi

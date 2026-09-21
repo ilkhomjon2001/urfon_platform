@@ -295,7 +295,7 @@ function HomeworkCard({ data }: { data: LessonDetailData }) {
                 <div className="min-w-0">
                   <div className="font-label-lg text-label-lg text-on-surface">{h.title}</div>
                   <div className="text-body-sm text-on-surface-variant">
-                    Muddat: {fmtDate(h.dueAt)}, {fmtTime(h.dueAt)} · +{h.coinReward} tanga (oʻz vaqtida)
+                    Muddat: {fmtDate(h.dueAt)}, {fmtTime(h.dueAt)} · 5 baho uchun +{h.coinReward} kumush
                   </div>
                 </div>
                 <Badge tone={m.tone} icon={m.icon}>

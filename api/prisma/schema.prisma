@@ -118,7 +118,8 @@ model StudentProfile {
   status         StudentStatus @default(ACTIVE)
   enrolledAt     DateTime      @default(now()) @db.Date
   leftAt         DateTime?     @db.Date
-  coinBalance    Int           @default(0) // CoinTransaction yig'indisining keshi
+  coinBalance    Int           @default(0) // kumush: CoinTransaction.amount yig'indisining keshi
+  xp             Int           @default(0) // tajriba: CoinTransaction.xp yig'indisi (bosqich shunga qarab)
   streakDays     Int           @default(0)
   lastStreakDate DateTime?     @db.Date
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -683,19 +684,23 @@ model PaymentAllocation {
 // ─────────────────────────── Gamifikatsiya ───────────────────────────
 
 enum CoinReason {
-  HOMEWORK_ON_TIME
-  ATTENDANCE
+  HOMEWORK_ON_TIME // eski qoida (2026-09-21 gacha)
+  ATTENDANCE // darsga oʻz vaqtida kelish
   ACTIVITY // darsdagi faollik (+1..+5, ustoz belgilaydi)
-  STREAK
+  STREAK // eski qoida (2026-09-21 gacha)
   MANUAL // admin/ustoz qo'lda (izoh bilan)
   SPEND // sarflash (manfiy)
+  GRADE // baho (vazifa, darsdagi baho, imtihon foizi)
+  CONTEST // musobaqa va tanlovlar (admin beradi)
+  PRESENTATION // 3 oylik taqdimot
 }
 
 model CoinTransaction {
   id          String     @id @default(cuid())
   studentId   String
   groupId     String?
-  amount      Int
+  amount      Int // kumush (sarflansa manfiy)
+  xp          Int        @default(0) // tajriba (faqat musbat, sarflanmaydi)
   reason      CoinReason
   refType     String? // "submission" | "attendance" | "lesson"
   refId       String?

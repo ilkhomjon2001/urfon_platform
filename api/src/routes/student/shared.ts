@@ -76,11 +76,14 @@ export const HOMEWORK_TYPE_LABEL: Record<HomeworkType, string> = {
 
 export const COIN_REASON_LABEL: Record<CoinReason, string> = {
   HOMEWORK_ON_TIME: "Uyga vazifa oʻz vaqtida",
-  ATTENDANCE: "Darsga keldi",
+  ATTENDANCE: "Darsga oʻz vaqtida keldi",
   ACTIVITY: "Darsdagi faollik",
   STREAK: "Kunlik seriya",
   MANUAL: "Qoʻshimcha mukofot",
   SPEND: "Tanga sarflandi",
+  GRADE: "Baho uchun",
+  CONTEST: "Musobaqa va tanlov",
+  PRESENTATION: "3 oylik taqdimot",
 };
 
 // ─────────────────────────── vazifa holati ───────────────────────────

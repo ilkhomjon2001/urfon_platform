@@ -4,6 +4,7 @@
 // Dars farzand a'zo bo'lgan guruhga (a'zolik oynasida) tegishli bo'lmasa — 404.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { homeworkReward } from "../../config/gamification.js";
 import { prisma } from "../../db.js";
 import { parse } from "../../lib/http.js";
 import { addDays, atTz, periodOf, startOfMonthTz } from "../../lib/dates.js";
@@ -232,7 +233,7 @@ export default async function lessons(app: FastifyInstance) {
       homework: l.homework.map((h) => {
         const s = h.submissions[0] ?? null;
         return {
-          id: h.id, title: h.title, description: h.description, type: h.type, dueAt: h.dueAt, coinReward: h.coinReward, files: h.files,
+          id: h.id, title: h.title, description: h.description, type: h.type, dueAt: h.dueAt, coinReward: homeworkReward(child.coins.xp), // 5 baho uchun kumush (farzand bosqichida) files: h.files,
           submission: s,
           state: s?.status === "REVIEWED" ? "reviewed" : s?.status === "RETURNED" ? "returned" : s?.status === "SUBMITTED" ? "submitted" : h.dueAt > now ? "open" : "missed",
         };

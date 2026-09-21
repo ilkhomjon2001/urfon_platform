@@ -24,7 +24,7 @@ export default function StudentHomeworkPage() {
         title="Uyga vazifalar"
         subtitle={
           data
-            ? `Vazifani oʻz vaqtida topshirsangiz, ustoz tekshirgach +${data.coinReward} tanga olasiz.`
+            ? `Ustoz baholagach, bahoga qarab kumush olasiz: 5 baho uchun +${data.coinReward}.`
             : "Bajariladigan va topshirilgan vazifalar"
         }
       />

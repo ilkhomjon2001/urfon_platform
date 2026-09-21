@@ -60,6 +60,8 @@ charges
 chart
 chat
 check
+check_box
+check_box_outline_blank
 check_circle
 checklist
 chevron_left
@@ -112,6 +114,7 @@ event_busy
 event_note
 event_repeat
 event_upcoming
+exam_result
 exams
 expand_less
 expand_more
@@ -289,6 +292,7 @@ restart_alt
 reviews
 rooms
 rule
+rules
 save
 saving
 savings

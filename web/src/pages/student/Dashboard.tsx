@@ -575,7 +575,7 @@ function GrowthCard({ d }: { d: StudentDashboard }) {
         <GrowthRow
           icon={<Icon name="local_fire_department" size={20} className="text-warning" />}
           title="Kunlik seriya"
-          sub={`Har kuni +${g.streakBonus} tanga`}
+          sub="Har kuni biror foydali ish"
           value={`${g.streakDays} kun`}
         />
         {avg != null ? (
@@ -615,7 +615,7 @@ function GrowthCard({ d }: { d: StudentDashboard }) {
             {hw ? (
               <>
                 {" "}
-                «{hw.title}» vazifasini oʻz vaqtida topshirsangiz, ustoz tekshirgach yana <b>+{hw.coinReward} tanga</b>.
+                «{hw.title}» vazifasidan 5 olsangiz, yana <b>+{hw.coinReward} kumush</b>.
               </>
             ) : null}
           </p>

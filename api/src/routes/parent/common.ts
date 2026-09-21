@@ -117,7 +117,7 @@ export async function loadChild(parentId: string, studentId: string) {
       group: primary ? groupDto(primary.group) : null,
       groups: enrollments.map((e) => ({ ...groupDto(e.group), enrollmentStatus: e.status, joinedAt: e.joinedAt, leftAt: e.leftAt })),
     },
-    coins: { balance: profile?.coinBalance ?? 0, streakDays: profile?.streakDays ?? 0 },
+    coins: { balance: profile?.coinBalance ?? 0, streakDays: profile?.streakDays ?? 0, xp: profile?.xp ?? 0 },
   };
 }
 

@@ -8,7 +8,6 @@ import { studentGroupIds } from "../lib/access.js";
 import { studentBalance } from "../lib/billing.js";
 import { addDays, endOfDayTz, periodOf, startOfDayTz, startOfWeekTz, ymdTz } from "../lib/dates.js";
 import { coinTitle } from "../config/gamification.js";
-import { earnedTotal } from "../lib/coins.js";
 import {
   ATTENDANCE_LABEL, GRADE_KIND, esc, fmtDate, fmtDbDate, fmtGrade, fmtMoney, fmtNum, fmtPercent, fmtPeriod,
   fmtRelDateTime, fmtSigned, fmtTime, fmtTimeRange, gradeLabel, weekdayShort,
@@ -257,12 +256,12 @@ export async function renderCoins(studentId: string, now = new Date()) {
   const lastYmd = p.lastStreakDate?.toISOString().slice(0, 10);
   const gapDays = lastYmd ? Math.round((Date.parse(ymdTz(now)) - Date.parse(lastYmd)) / 86_400_000) : Infinity;
   const streak = gapDays <= 2 ? p.streakDays : 0;
-  const title = coinTitle(await earnedTotal(prisma, studentId));
+  const title = coinTitle(p.xp);
   const out = [
     "<b>Kumush tangalar</b>",
-    `Balans: <b>${fmtNum(p.coinBalance)}</b> tanga · unvon: ${esc(title.current)}`,
+    `Kumush: <b>${fmtNum(p.coinBalance)}</b> · tajriba: ${fmtNum(p.xp)} XP (${esc(title.current)})`,
   ];
-  if (title.next) out.push(`${fmtNum(title.next.remaining)} tangadan keyin “${esc(title.next.name)}” unvoni`);
+  if (title.next) out.push(`Yana ${fmtNum(title.next.remaining)} XP dan keyin ${esc(title.next.name)} — har bir harakat uchun koʻproq kumush`);
   out.push(`Seriya: ${streak} kun`, "", `Oxirgi 7 kun: <b>${fmtSigned(last7)}</b> (oldingi 7 kunda ${fmtSigned(prev7)})`);
   for (let i = 0; i < 7; i++) {
     const d = addDays(from7, i);

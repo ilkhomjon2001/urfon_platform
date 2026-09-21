@@ -3,6 +3,8 @@
 import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { gradeRule } from "../../config/gamification.js";
+import { coinRef, revokeCoins, syncGradeCoins } from "../../lib/coins.js";
 import { prisma } from "../../db.js";
 import { auditCtx, idParam, parse } from "../../lib/http.js";
 import { assertTeacherGroup, teacherGroupIds } from "../../lib/access.js";
@@ -375,6 +377,7 @@ export default async function exams(app: FastifyInstance) {
         if (n.empty) {
           if (old) {
             await tx.examResult.delete({ where: { id: old.id } });
+            await revokeCoins(tx, n.studentId, "GRADE", "exam_result", id);
             out.push({ studentId: n.studentId, before, after: null });
           }
           continue;
@@ -385,6 +388,8 @@ export default async function exams(app: FastifyInstance) {
           create: { examId: id, studentId: n.studentId, ...n.r },
           update: n.r,
         });
+        // Foizli natija uchun tanga (60–70 → 3, 71–85 → 4, 86–94 → 5, 95–100 → 5+); IELTS band uchun berilmaydi
+        await syncGradeCoins(tx, { studentId: n.studentId, groupId: exam.groupId, ref: coinRef.exam(id), rule: gradeRule(null, n.r.percent ?? null), note: exam.title, createdById: req.auth.userId });
         out.push({ studentId: n.studentId, before, after: n.r });
         if (body.notify) {
           const name = names.get(n.studentId)!;

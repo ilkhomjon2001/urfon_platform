@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { Prisma, type SubmissionStatus } from "@prisma/client";
 import { z } from "zod";
 import { prisma, type Db } from "../../db.js";
-import { GAMIFICATION } from "../../config/gamification.js";
+import { GAMIFICATION, RULES, homeworkReward } from "../../config/gamification.js";
 import { writeAudit } from "../../lib/audit.js";
 import { touchStreak } from "../../lib/coins.js";
 import { dbDateYmd, ymdTz } from "../../lib/dates.js";
@@ -110,6 +110,7 @@ export default async function homework(app: FastifyInstance) {
       },
     });
     const now = new Date();
+    const reward = homeworkReward((await prisma.studentProfile.findUnique({ where: { userId: studentId }, select: { xp: true } }))?.xp);
     const items = rows.map((h) => {
       const sub = h.submissions[0] ?? null;
       const state = hwState(sub);
@@ -124,7 +125,7 @@ export default async function homework(app: FastifyInstance) {
         group: h.group,
         topic: h.topic ? { id: h.topic.id, unit: h.topic.unit, label: topicLabel(h.topic) } : null,
         lesson: h.lesson,
-        coinReward: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+        coinReward: reward,
         state,
         stateLabel: HW_STATE_LABEL[state],
         open: isOpenState(state) && active.has(h.groupId),
@@ -146,7 +147,7 @@ export default async function homework(app: FastifyInstance) {
     return {
       items: list,
       counts: { open: openItems.length, done: doneItems.length, all: items.length },
-      coinReward: GAMIFICATION.coins.HOMEWORK_ON_TIME,
+      coinReward: reward,
       now,
     };
   });
@@ -170,7 +171,7 @@ export default async function homework(app: FastifyInstance) {
         },
       }),
       prisma.submission.findUnique({ where: { homeworkId_studentId: { homeworkId: id, studentId } }, include: subInclude }),
-      prisma.studentProfile.findUnique({ where: { userId: studentId }, select: { streakDays: true, lastStreakDate: true } }),
+      prisma.studentProfile.findUnique({ where: { userId: studentId }, select: { streakDays: true, lastStreakDate: true, xp: true } }),
     ]);
     const now = new Date();
     const state = hwState(sub);
@@ -224,7 +225,8 @@ export default async function homework(app: FastifyInstance) {
       },
       attachments: full.files,
       lessonMaterials,
-      reward: { onTime: GAMIFICATION.coins.HOMEWORK_ON_TIME, streak: GAMIFICATION.coins.STREAK },
+      // onTime — 5 baho uchun kumush (oʻquvchi bosqichida); kunlik seriya uchun tanga endi berilmaydi
+      reward: { onTime: homeworkReward(profile?.xp), streak: 0 },
       state,
       stateLabel: HW_STATE_LABEL[state],
       overdue: isOpenState(state) && hw.dueAt < now,
@@ -239,7 +241,7 @@ export default async function homework(app: FastifyInstance) {
       streak: {
         days: profile?.streakDays ?? 0,
         activeToday: !!profile?.lastStreakDate && dbDateYmd(profile.lastStreakDate) === ymdTz(now),
-        bonus: GAMIFICATION.coins.STREAK,
+        bonus: 0,
       },
     };
   });
@@ -366,14 +368,14 @@ export default async function homework(app: FastifyInstance) {
 
     const [sub, profile] = await Promise.all([
       prisma.submission.findUniqueOrThrow({ where: { id: result.subId }, include: subInclude }),
-      prisma.studentProfile.findUnique({ where: { userId: studentId }, select: { streakDays: true, coinBalance: true } }),
+      prisma.studentProfile.findUnique({ where: { userId: studentId }, select: { streakDays: true, coinBalance: true, xp: true } }),
     ]);
     return {
       submission: subDto(sub, 0),
       state: sub.status,
       stateLabel: HW_STATE_LABEL[sub.status],
-      // Tanga ustoz tekshirgandan keyin beriladi (faqat o'z vaqtida topshirilgan bo'lsa)
-      expectedCoins: result.isLate ? 0 : GAMIFICATION.coins.HOMEWORK_ON_TIME,
+      // Tanga ustoz baholagandan keyin beriladi (bahoga qarab); bu — 5 baho uchun kumush
+      expectedCoins: homeworkReward(profile?.xp),
       streakDays: profile?.streakDays ?? 0,
       coinBalance: profile?.coinBalance ?? 0,
     };

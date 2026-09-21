@@ -2,6 +2,7 @@
 // Ota-ona uchun faqat o'qish: farzandning uyga vazifalari va ularning holati.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { homeworkReward } from "../../config/gamification.js";
 import { prisma } from "../../db.js";
 import { parse } from "../../lib/http.js";
 import { childHomeworkWhere, childQuery, loadChild, teacherDto, teacherSel } from "./common.js";
@@ -61,7 +62,7 @@ export default async function homework(app: FastifyInstance) {
         type: h.type,
         dueAt: h.dueAt,
         createdAt: h.createdAt,
-        coinReward: h.coinReward,
+        coinReward: homeworkReward(child.coins.xp), // 5 baho uchun kumush (farzand bosqichida)
         group: h.group,
         lesson: h.lesson,
         topic: h.topic,

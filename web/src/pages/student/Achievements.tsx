@@ -32,12 +32,19 @@ import { CoinIcon, ErrorState, signed } from "./components/common";
 import type { Achievements, CoinTx } from "./components/types";
 
 const RULE_ICON: Record<string, string> = {
-  HOMEWORK_ON_TIME: "assignment_turned_in",
   ATTENDANCE: "event_available",
+  GRADE: "grade",
   ACTIVITY: "record_voice_over",
-  STREAK: "local_fire_department",
+  CONTEST: "emoji_events",
 };
-const REASON_ICON: Record<string, string> = { ...RULE_ICON, MANUAL: "redeem", SPEND: "shopping_bag" };
+const REASON_ICON: Record<string, string> = {
+  ...RULE_ICON,
+  HOMEWORK_ON_TIME: "assignment_turned_in",
+  STREAK: "local_fire_department",
+  PRESENTATION: "co_present",
+  MANUAL: "redeem",
+  SPEND: "shopping_bag",
+};
 const MILESTONE_ICON: Record<string, string> = {
   first_step: "flag",
   homework_10: "menu_book",
@@ -122,11 +129,11 @@ function Hero({ a }: { a: Achievements }) {
             <p className="font-label-sm text-label-sm uppercase tracking-wide text-on-primary/75">Mening hisobim</p>
             <p className="flex items-baseline gap-2">
               <span className="font-display-lg text-display-lg tabular-nums">{fmtNum(a.balance)}</span>
-              <span className="font-headline-md text-headline-md text-gold">tanga</span>
+              <span className="font-headline-md text-headline-md text-gold">kumush</span>
             </p>
             <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-on-primary/15 px-2.5 py-0.5 font-label-sm text-label-sm">
               <Icon name="verified" size={14} />
-              {t.current} unvoni
+              {t.current} · {fmtNum(t.earned)} XP
             </span>
           </div>
         </div>
@@ -136,16 +143,14 @@ function Hero({ a }: { a: Achievements }) {
             <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-on-primary/10 px-3 py-1.5 text-body-sm">
               <Icon name="local_fire_department" filled size={18} className="text-gold" />
               <b>{a.streak.days} kunlik seriya</b>
-              <span className="text-on-primary/80">
-                — {a.streak.activeToday ? "ertaga" : "bugun faol boʻlsangiz"} yana <b className="text-gold">+{a.streak.bonus} tanga</b>
-              </span>
+              <span className="text-on-primary/80">— {a.streak.activeToday ? "bugun ham faolsiz" : "bugun ham faol boʻling"}</span>
             </span>
           ) : null}
           {t.next ? (
             <>
               <div className="mt-3 flex items-end justify-between gap-3 text-body-sm">
                 <span>
-                  {t.next.name} unvonigacha <b>{fmtNum(t.next.remaining)} tanga</b>
+                  {t.next.name}gacha <b>{fmtNum(t.next.remaining)} XP</b> — keyin har bir harakat uchun koʻproq kumush
                 </span>
                 <span className="tabular-nums text-on-primary/80">
                   {fmtNum(t.earned)} / {fmtNum(t.next.target)}
@@ -157,12 +162,12 @@ function Hero({ a }: { a: Achievements }) {
               <div className="mt-1.5 flex justify-between text-body-sm text-on-primary/75">
                 <span>{t.current}</span>
                 <span>
-                  {t.next.name} ({fmtNum(t.next.target)})
+                  {t.next.name} ({fmtNum(t.next.target)} XP)
                 </span>
               </div>
             </>
           ) : (
-            <p className="mt-3 text-body-md">Siz eng yuqori unvonga erishgansiz — ajoyib mehnat!</p>
+            <p className="mt-3 text-body-md">Siz eng yuqori bosqichdasiz — ajoyib mehnat!</p>
           )}
         </div>
 
@@ -329,7 +334,7 @@ function Rules({ a }: { a: Achievements }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-headline-lg text-headline-lg text-on-surface">
           <Icon name="savings" size={24} className="text-primary" />
-          Kumush tangalarni qanday toʻplash mumkin?
+          Kumush va XP qanday yigʻiladi?
         </h2>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -345,6 +350,7 @@ function Rules({ a }: { a: Achievements }) {
               </span>
             </div>
             <p className="mt-3 font-headline-sm text-headline-sm text-on-surface">{r.title}</p>
+            {r.xp ? <p className="text-body-sm text-on-surface-muted">+{r.xp} XP{r.key === "GRADE" ? " gacha" : ""} · kumush — {a.title.current}da</p> : null}
             <p className="mt-1 flex-1 text-body-md text-on-surface-variant">{r.description}</p>
             <p className="mt-3 inline-flex items-center gap-1 font-label-md text-label-md text-primary">
               <Icon name="check_circle" size={16} />
@@ -466,7 +472,7 @@ function AllTransactionsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 function Titles({ a }: { a: Achievements }) {
   return (
     <Card>
-      <CardHeader title="Unvonlar" icon="workspace_premium" description="Tanga yigʻilgan sari yangi unvon ochiladi" />
+      <CardHeader title="Bosqichlar" icon="workspace_premium" description="XP (tajriba) oshgan sari bosqich oshadi — har bir harakat uchun koʻproq kumush olasiz. Xarid XP ni kamaytirmaydi." />
       <CardContent>
         <ol className="flex flex-col gap-2">
           {a.title.all.map((t) => {
@@ -476,7 +482,7 @@ function Titles({ a }: { a: Achievements }) {
                 <Icon name={t.reached ? "verified" : "lock"} size={20} className={t.reached ? "text-primary" : "text-outline"} />
                 <span className={cn("min-w-0 flex-1 font-label-lg text-label-lg", t.reached ? "text-on-surface" : "text-on-surface-muted")}>{t.name}</span>
                 {cur ? <Badge tone="primary">Hozirgi</Badge> : null}
-                <span className="shrink-0 text-body-sm tabular-nums text-on-surface-muted">{fmtNum(t.min)}+</span>
+                <span className="shrink-0 text-body-sm tabular-nums text-on-surface-muted">{fmtNum(t.min)}+ XP</span>
               </li>
             );
           })}

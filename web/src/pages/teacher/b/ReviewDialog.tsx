@@ -304,16 +304,16 @@ function ReviewBody({ d, hasNext, onSaved }: { d: SubmissionDetail; hasNext: boo
 
         {d.coinsAwarded > 0 ? (
           <div className="flex items-center gap-2 rounded-lg bg-tertiary-fixed px-3 py-2 text-body-sm font-semibold text-on-tertiary-fixed-variant">
-            <Icon name="toll" size={18} />+{d.coinsAwarded} tanga berilgan
+            <Icon name="toll" size={18} />+{d.coinsAwarded} kumush berilgan (baho uchun)
           </div>
         ) : d.coinsOnReview > 0 ? (
           <div className="flex items-center gap-2 rounded-lg bg-tertiary-fixed px-3 py-2 text-body-sm font-semibold text-on-tertiary-fixed-variant">
-            <Icon name="toll" size={18} />+{d.coinsOnReview} tanga — oʻz vaqtida topshirilgan
+            <Icon name="toll" size={18} />Baho uchun kumush beriladi: 5 → +{d.coinsOnReview} (oʻquvchi bosqichi yuqori boʻlsa koʻproq)
           </div>
         ) : d.isLate ? (
           <div className="flex items-center gap-2 rounded-lg bg-warning-container px-3 py-2 text-body-sm font-medium text-on-warning-container">
             <Icon name="info" size={18} />
-            Kechikkan — baho qoʻyiladi, tanga berilmaydi
+            Kechikkan — baho qoʻyiladi
           </div>
         ) : null}
 

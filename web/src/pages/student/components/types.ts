@@ -407,7 +407,7 @@ export interface Achievements {
     weeks: { start: ISODate; end: ISODate; coins: number; current: boolean }[];
     thisWeekByReason: { reason: string; label: string; amount: number }[];
   };
-  rules: { key: string; title: string; description: string; amount: number | null; min: number | null; max: number | null; hint: string }[];
+  rules: { key: string; title: string; description: string; amount: number | null; xp: number | null; min: number | null; max: number | null; hint: string }[];
   milestones: { key: string; title: string; achieved: boolean; progress: { current: number; target: number } | null; hint: string; date?: ISODate | null }[];
   transactions: { items: CoinTx[]; total: number };
   groups: {

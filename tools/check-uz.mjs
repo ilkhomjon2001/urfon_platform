@@ -11,7 +11,7 @@ const FORBIDDEN = [
   [/\btalaba/i, "talaba → oʻquvchi"],
   [/o[ʻ']qituvchi/i, "oʻqituvchi → ustoz"],
   [/instru[ck]tor/i, "instruktor → ustoz"],
-  [/\bXP\b/, "XP → tanga"],
+  // XP — 2026-09-21 dan rasmiy atama (tajriba; kumush bilan birga), shuning uchun taqiqlanmaydi
   [/\bUZS\b/, "UZS → soʻm"],
   [/\byulduz/i, "yulduz → tanga"],
   [/sinf rahbari/i, "sinf rahbari → ustoz"],
