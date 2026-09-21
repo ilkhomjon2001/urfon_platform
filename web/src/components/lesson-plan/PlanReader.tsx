@@ -468,7 +468,7 @@ export function PlanReader({ levels, loadingLevels, defaultLevelId, defaultTrack
       {toolbar}
       {cur && selected ? (
         <p className="font-mono text-[13px] text-on-surface-variant print:hidden">
-          {selected.label} · {TRACK_LABEL[track]} · {unitName(cur.unit).tag}
+          {selected.label} · {hasKids ? `${TRACK_LABEL[track]} · ` : ""}{unitName(cur.unit).tag}
         </p>
       ) : null}
       {body}

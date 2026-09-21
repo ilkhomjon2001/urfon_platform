@@ -59,3 +59,26 @@ export function checkMinutes(units: PlanUnit[], label: string) {
   if (bad.length) throw new Error(`Dars davomiyligi 90 daqiqa emas:\n  ${bad.join("\n  ")}`);
   return units;
 }
+
+/** Bitta yosh toifasi uchun yozilgan kitob uniti (masalan Starter — Kid's Box 1, faqat 8–12 yosh). */
+export type BookUnit = {
+  unit: number;
+  title: string;
+  description: string;
+  objectives: string[];
+  vocabulary: string[];
+  grammar: string;
+  lessons: PlanLesson[];
+};
+
+/** BookUnit darslarining har biri 90 daqiqa ekanini tekshiradi. */
+export function checkBookMinutes(units: BookUnit[], label: string) {
+  const bad = units.flatMap((u) =>
+    u.lessons
+      .map((l) => ({ l, sum: l.blocks.reduce((s, b) => s + b.minutes, 0) }))
+      .filter((x) => x.sum !== 90)
+      .map((x) => `${label} unit ${u.unit} "${x.l.focus}": ${x.sum} daqiqa`),
+  );
+  if (bad.length) throw new Error(`Dars davomiyligi 90 daqiqa emas:\n  ${bad.join("\n  ")}`);
+  return units;
+}

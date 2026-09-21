@@ -1,10 +1,11 @@
 // URFON ingliz tili oʻquv dasturi (Mavzular bazasi uchun maʼlumot).
 // Tartib (2026-09-21, egasi tasdiqlagan): har level — alohida kitob.
 //   Starter → Beginner → Elementary → Pre-Intermediate → Intermediate → Upper-Intermediate, keyin CEFR (Multilevel) va IELTS.
-// Hozircha faqat Beginner toʻla: Cambridge Prepare 2e Level 1 (Starter + 1–20-unitlar), darsma-dars reja bilan (./prepare1).
+// Toʻla levellar: Starter — Cambridge Kidʼs Box 1 (./kidsbox1, faqat 8–12 yosh) va Beginner — Prepare 2e Level 1 (./prepare1).
 // Bitta level ichida ikki yosh toifasi: 13–16 yosh (lessonPlan, tezroq) va 8–12 yosh (kidsPlan, sekinroq) —
 // guruhning ageGroup maydoniga qarab tanlanadi. Qolgan levellar kitobi tanlangach toʻldiriladi (hozir unitlari yoʻq).
 // Til: title/description/objectives — oʻzbekcha (lotin), vocabulary/grammar — inglizcha.
+import { KIDSBOX1 } from "./kidsbox1.js";
 import { PREPARE1, type PlanLesson } from "./prepare1.js";
 
 export type CurriculumUnit = {
@@ -39,6 +40,20 @@ export type CurriculumLevel = {
 
 const PENDING = "Alohida kitob asosida oʻtiladi — kitob tanlangach unitlar va darsma-dars reja shu yerga qoʻshiladi.";
 
+// ─── Starter: Kidʼs Box 1 (faqat 8–12 yosh — bolalar kitobi; reja lessonPlan da, kidsPlan yoʻq) ───
+const starterUnits: CurriculumUnit[] = KIDSBOX1.units.map((u) => ({
+  unit: u.unit,
+  title: u.title,
+  description: u.description,
+  objectives: u.objectives,
+  vocabulary: u.vocabulary,
+  grammar: u.grammar,
+  lessonsCount: u.lessons.length,
+  hours: u.lessons.length * 1.5,
+  lessonPlan: u.lessons,
+}));
+const starterLessons = starterUnits.reduce((s, u) => s + u.lessonsCount, 0);
+
 // ─── Beginner: Prepare 2e Level 1 ───
 const beginnerUnits: CurriculumUnit[] = PREPARE1.units.map((u) => ({
   unit: u.unit,
@@ -61,10 +76,13 @@ export const CURRICULUM: CurriculumLevel[] = [
     name: "Starter",
     order: 1,
     cefr: "Pre-A1",
-    weeks: null,
-    audience: "Nolldan boshlovchilar",
-    description: `Alifbo, eng birinchi soʻzlar va oddiy iboralar. ${PENDING}`,
-    units: [],
+    weeks: Math.ceil(starterLessons / 3),
+    audience: "8–12 yosh · nolldan",
+    description:
+      `Cambridge Kidʼs Box 1 (Pupilʼs Book): 12 unit — salomlashish, sonlar, ranglar, maktab, oʻyinchoqlar, oila, uy hayvonlari, ` +
+      `kiyimlar va boshqalar. ${starterLessons} dars (haftasiga 3 ta, ≈ ${Math.round(starterLessons / 3 / 4.3)} oy). ` +
+      `Bolalar kitobi — faqat 8–12 yosh uchun; nolldan boshlovchi 13–16 yoshlilar toʻgʻridan-toʻgʻri Beginner dan boshlaydi.`,
+    units: starterUnits,
   },
   {
     code: "BEGINNER",
