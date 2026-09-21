@@ -125,7 +125,7 @@ export function Header({ nav, onLogout }: { nav: RoleNav; onLogout: () => void }
   return (
     <header
       data-urfon-shell="header"
-      className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-lowest/90 px-4 backdrop-blur-xl sm:px-6 lg:left-64 lg:gap-4"
+      className="fixed left-0 right-0 top-0 z-40 flex h-16 print:hidden items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-lowest/90 px-4 backdrop-blur-xl sm:px-6 lg:left-64 lg:gap-4"
     >
       <Link to={nav.base} className="flex min-w-0 items-center gap-2.5 lg:hidden" aria-label="Bosh sahifa">
         <Logo />

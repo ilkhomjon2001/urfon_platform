@@ -9,6 +9,7 @@ import schedule from "./schedule.js";
 import homework from "./homework.js";
 import exams from "./exams.js";
 import resources from "./resources.js";
+import curriculum from "./curriculum.js";
 import announcements from "./announcements.js";
 
 export default async function teacherRoutes(app: FastifyInstance) {
@@ -21,5 +22,6 @@ export default async function teacherRoutes(app: FastifyInstance) {
   await app.register(homework);
   await app.register(exams);
   await app.register(resources);
+  await app.register(curriculum);
   await app.register(announcements);
 }

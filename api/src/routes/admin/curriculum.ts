@@ -7,6 +7,7 @@ import { writeAudit } from "../../lib/audit.js";
 import { addDays } from "../../lib/dates.js";
 import { badRequest, conflict, notFound } from "../../lib/errors.js";
 import { auditCtx, idParam, parse } from "../../lib/http.js";
+import { levelPlan } from "../../lib/lesson-plans.js";
 import { BUSY_STATUSES, levelLabel, pct } from "./a/schedule.js";
 
 const zId = z.string().min(1).max(40);
@@ -150,6 +151,12 @@ export default async function curriculum(app: FastifyInstance) {
       });
       return { ...u, label: levelLabel(u) };
     });
+  });
+
+  // ─── Dars rejalari (oʻqish sahifasi): arxivdan tashqari barcha mavzular ───
+  app.get("/curriculum/levels/:id/plan", async (req) => {
+    const { id } = parse(idParam, req.params);
+    return levelPlan(id, false);
   });
 
   // ─── Level mavzulari (unit tartibida) ───

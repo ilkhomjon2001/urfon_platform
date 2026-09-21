@@ -679,6 +679,15 @@ function TopicCard({ d, className }: { d: LessonResponse; className?: string }) 
                       {t.grammar ? <div className="text-body-sm text-on-surface-variant">Grammar: {t.grammar}</div> : null}
                       {t.vocabulary.length ? <div className="line-clamp-2 text-body-sm text-on-surface-muted">Lugʻat: {t.vocabulary.slice(0, 8).join(", ")}</div> : null}
                       {t.lessonPlan?.length ? <LessonPlanToday plan={t.lessonPlan} part={t.part} /> : null}
+                      {t.lessonPlan?.length && d.group.level ? (
+                        <Link
+                          to={`/ustoz/dars-rejalari?level=${d.group.level.id}&unit=${t.id}&part=${t.part}`}
+                          className="mt-2 inline-flex items-center gap-1.5 font-label-md text-label-md text-primary hover:underline"
+                        >
+                          <Icon name="open_in_new" size={16} />
+                          Rejani toʻliq ekranda ochish
+                        </Link>
+                      ) : null}
                     </div>
                     <IconButton
                       icon="close"

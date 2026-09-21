@@ -75,7 +75,7 @@ export function Sidebar({ nav, activeKey, badges, onLogout }: SidebarProps) {
   return (
     <aside
       data-urfon-shell="sidebar"
-      className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-outline-variant bg-surface-container-lowest lg:flex"
+      className="fixed inset-y-0 left-0 z-50 hidden w-64 print:!hidden flex-col border-r border-outline-variant bg-surface-container-lowest lg:flex"
     >
       <Link to={nav.base} className="flex h-16 shrink-0 items-center border-b border-outline-variant px-5">
         <Brand cabinet={nav.cabinet} />

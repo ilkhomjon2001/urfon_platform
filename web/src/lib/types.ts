@@ -107,3 +107,32 @@ export interface PlanLesson {
   uyga: string[];
   ustozga: string;
 }
+
+/** Dars rejalari oʻqish sahifasi: bosqich va uning unitlari (GET …/curriculum/levels/:id/plan). */
+export interface PlanLevel {
+  id: string;
+  code: string;
+  name: string;
+  label: string;
+  audience: string | null;
+  cefr: string | null;
+  weeks: number | null;
+  description: string | null;
+}
+
+export interface PlanUnitDto {
+  id: string;
+  unit: number;
+  title: string;
+  description: string | null;
+  grammar: string | null;
+  vocabulary: string[];
+  status: string;
+  lessons: PlanLesson[];
+}
+
+export interface LevelPlanResponse {
+  level: PlanLevel;
+  units: PlanUnitDto[];
+  totalLessons: number;
+}

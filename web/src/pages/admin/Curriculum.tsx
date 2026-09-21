@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Alert, Avatar, Badge, Button, buttonVariants, Card, ConfirmDialog, EmptyState, Field, Icon, IconButton, PageHeader, ProgressBar, SearchInput, Select, Skeleton,
 } from "@/components/ui";
-import { LessonPlanAll } from "@/components/LessonPlanView";
 import { useShellSearch } from "@/components/shell/ShellSearch";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -348,6 +347,7 @@ export default function AdminCurriculumPage() {
             <div className={cn("flex flex-col gap-3", (topicsQ.isFetching || reorder.isPending) && "opacity-80")}>
               {items.map((t, idx) => (
                 <TopicCard
+                  planHref={levelId ? `/admin/dars-rejalari?level=${levelId}&unit=${t.id}` : null}
                   key={t.id}
                   t={t}
                   first={idx === 0}
@@ -431,8 +431,10 @@ export default function AdminCurriculumPage() {
 }
 
 function TopicCard({
+  planHref,
   t, first, last, dragging, busy, onDragStart, onDragEnd, onDragOver, onDrop, onUp, onDown, onEdit, onDuplicate, onArchive, onRestore, onPublish, onUnpublish,
 }: {
+  planHref: string | null;
   t: TopicRow;
   first: boolean;
   last: boolean;
@@ -519,7 +521,12 @@ function TopicCard({
             {t.vocabulary.length > 6 ? <span className="px-1 text-on-surface-muted">+{t.vocabulary.length - 6}</span> : null}
           </div>
         ) : null}
-        {t.lessonPlan?.length ? <LessonPlanAll plan={t.lessonPlan} /> : null}
+        {t.lessonPlan?.length && planHref ? (
+          <Link to={planHref} className={buttonVariants({ variant: "secondary", size: "sm", className: "mt-3 text-primary" })}>
+            <Icon name="auto_stories" size={18} />
+            Dars rejasini ochish · {t.lessonPlan.length} dars
+          </Link>
+        ) : null}
         {live ? (
           <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-lg bg-surface-container-low p-2">
             <Icon name="record_voice_over" size={20} className="text-primary" />

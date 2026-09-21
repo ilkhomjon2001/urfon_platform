@@ -32,7 +32,7 @@ export function MobileNav({ nav, activeKey, badges, onLogout }: MobileNavProps) 
     <>
       <nav
         aria-label="Pastki menyu"
-        className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant bg-surface-container-lowest/95 backdrop-blur-xl lg:hidden"
+        className="pb-safe fixed inset-x-0 bottom-0 z-40 print:hidden border-t border-outline-variant bg-surface-container-lowest/95 backdrop-blur-xl lg:hidden"
       >
         <div className="grid h-16 grid-cols-5">
           {tabs.map((t) => {

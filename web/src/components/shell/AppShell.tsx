@@ -27,8 +27,8 @@ export function AppShell({ role }: { role: Role }) {
       <div className="min-h-dvh bg-background">
         <Sidebar nav={nav} activeKey={activeKey} badges={badges} onLogout={handleLogout} />
         <Header nav={nav} onLogout={handleLogout} />
-        <div className="lg:pl-64">
-          <main className="min-w-0 overflow-x-clip pb-24 pt-16 lg:pb-10">
+        <div className="lg:pl-64 print:pl-0">
+          <main className="min-w-0 overflow-x-clip pb-24 pt-16 lg:pb-10 print:p-0">
             <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:py-6">
               <Suspense fallback={<PageSpinner />}>
                 <Outlet />
