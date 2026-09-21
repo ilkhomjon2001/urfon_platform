@@ -11,11 +11,13 @@ add_a_photo
 add_card
 add_circle
 add_comment
+advance
 akkaunt
 alarm
 all
 analytics
 apartment
+apparel
 archive
 arrow_back
 arrow_circle_right
@@ -36,6 +38,7 @@ auto_awesome
 auto_stories
 autorenew
 badge
+balance
 bar_chart
 block
 bolt
@@ -53,6 +56,7 @@ campaign
 cancel
 category
 celebration
+charges
 chart
 chat
 check
@@ -61,6 +65,7 @@ checklist
 chevron_left
 chevron_right
 children
+clear
 close
 cloud
 cloud_done
@@ -80,6 +85,8 @@ danger
 dars
 dashboard
 dataset
+debt
+debtors
 default
 delete
 description
@@ -162,6 +169,7 @@ info
 input
 insights
 inventory_2
+items
 kept_manual
 key
 label
@@ -208,6 +216,7 @@ my_chat_member
 nafar
 navy
 neutral
+new
 no_lesson
 notes
 notifications
@@ -216,6 +225,7 @@ notifications_off
 off
 open
 open_in_new
+orders
 outgoing_mail
 outline
 overdue
@@ -243,6 +253,7 @@ phonelink_erase
 photo_camera
 picture_as_pdf
 pill
+plans
 play_arrow
 play_circle
 primary
@@ -295,6 +306,8 @@ settings
 share
 shield
 shield_person
+shop
+shop_order
 shopping_bag
 show_chart
 sm
@@ -336,6 +349,7 @@ table_chart
 table_rows
 table_view
 tag
+tanga
 task_alt
 teachers
 tel
@@ -350,6 +364,7 @@ translate
 trending_down
 trending_flat
 trending_up
+tx
 type
 unarchive
 unblock

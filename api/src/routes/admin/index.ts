@@ -13,6 +13,7 @@ import parents from "./parents.js";
 import payments from "./payments.js";
 import reports from "./reports.js";
 import audit from "./audit.js";
+import shop from "./shop.js";
 
 export default async function adminRoutes(app: FastifyInstance) {
   app.addHook("onRequest", authenticate);
@@ -28,4 +29,5 @@ export default async function adminRoutes(app: FastifyInstance) {
   await app.register(payments);
   await app.register(reports);
   await app.register(audit);
+  await app.register(shop);
 }

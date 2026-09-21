@@ -24,6 +24,7 @@ const Admin = {
   Payments: lazy(() => import("@/pages/admin/Payments")),
   Reports: lazy(() => import("@/pages/admin/Reports")),
   Audit: lazy(() => import("@/pages/admin/Audit")),
+  Shop: lazy(() => import("@/pages/admin/Shop")),
 };
 
 const Teacher = {
@@ -46,6 +47,7 @@ const Parent = {
   Grades: lazy(() => import("@/pages/parent/Grades")),
   Homework: lazy(() => import("@/pages/parent/Homework")),
   Payments: lazy(() => import("@/pages/parent/Payments")),
+  Shop: lazy(() => import("@/pages/parent/Shop")),
   Contact: lazy(() => import("@/pages/parent/Contact")),
 };
 
@@ -56,6 +58,7 @@ const Student = {
   HomeworkDo: lazy(() => import("@/pages/student/HomeworkDo")),
   Materials: lazy(() => import("@/pages/student/Materials")),
   Achievements: lazy(() => import("@/pages/student/Achievements")),
+  Shop: lazy(() => import("@/pages/student/Shop")),
   Chat: lazy(() => import("@/pages/student/Chat")),
 };
 
@@ -118,6 +121,7 @@ export const router = createBrowserRouter(
           { path: "resurslar", element: <Admin.Resources /> },
           { path: "tolovlar", element: <Admin.Payments /> },
           { path: "hisobotlar", element: <Admin.Reports /> },
+          { path: "dokon", element: <Admin.Shop /> },
           { path: "jurnal", element: <Admin.Audit /> },
         ]),
 
@@ -141,6 +145,7 @@ export const router = createBrowserRouter(
           { path: "baholar", element: <Parent.Grades /> },
           { path: "vazifalar", element: <Parent.Homework /> },
           { path: "tolovlar", element: <Parent.Payments /> },
+          { path: "dokon", element: <Parent.Shop /> },
           { path: "aloqa", element: <Parent.Contact /> },
         ]),
 
@@ -151,6 +156,7 @@ export const router = createBrowserRouter(
           { path: "vazifalar/:homeworkId", element: <Student.HomeworkDo /> },
           { path: "materiallar", element: <Student.Materials /> },
           { path: "yutuqlar", element: <Student.Achievements /> },
+          { path: "dokon", element: <Student.Shop /> },
           { path: "chat", element: <Student.Chat /> },
         ]),
 

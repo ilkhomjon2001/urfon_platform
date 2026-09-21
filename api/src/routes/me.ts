@@ -21,13 +21,14 @@ export default async function meRoutes(app: FastifyInstance) {
     const { userId, role } = req.auth;
     const now = new Date();
     if (role === "ADMIN") {
-      const [groups, teachers, students, overdue] = await Promise.all([
+      const [groups, teachers, students, overdue, shopPending] = await Promise.all([
         prisma.group.count({ where: { status: { not: "FINISHED" } } }),
         prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
         prisma.studentProfile.count({ where: { status: { not: "LEFT" } } }),
         prisma.payment.count({ where: { status: "OVERDUE" } }),
+        prisma.shopOrder.count({ where: { status: "PENDING" } }),
       ]);
-      return { groups, teachers, students, payments: overdue ? `${overdue} kechikkan` : 0 };
+      return { groups, teachers, students, payments: overdue ? `${overdue} kechikkan` : 0, shop: shopPending };
     }
     if (role === "TEACHER") {
       const [homework, messages] = await Promise.all([

@@ -241,7 +241,7 @@ export default async function materials(app: FastifyInstance) {
     let type: MaterialType;
     if (body.fileId) {
       const f = await prisma.file.findFirst({
-        where: { id: body.fileId, uploadedById: me, submissionId: null, homeworkId: null, messageId: null, material: { is: null } },
+        where: { id: body.fileId, uploadedById: me, submissionId: null, homeworkId: null, messageId: null, material: { is: null }, shopItem: { is: null } },
       });
       if (!f) throw badRequest("Fayl topilmadi yoki allaqachon ishlatilgan");
       type = typeFromMime(f.mime);

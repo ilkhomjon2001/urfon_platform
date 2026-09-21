@@ -148,7 +148,7 @@ function Hero({ a }: { a: Achievements }) {
                   {t.next.name} unvonigacha <b>{fmtNum(t.next.remaining)} tanga</b>
                 </span>
                 <span className="tabular-nums text-on-primary/80">
-                  {fmtNum(a.balance)} / {fmtNum(t.next.target)}
+                  {fmtNum(t.earned)} / {fmtNum(t.next.target)}
                 </span>
               </div>
               <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-on-primary/15" role="progressbar" aria-valuenow={t.progress} aria-valuemin={0} aria-valuemax={100}>

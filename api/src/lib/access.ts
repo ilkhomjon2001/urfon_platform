@@ -110,6 +110,7 @@ export async function canAccessFile(u: AuthUser, fileId: string) {
     where: { id: fileId },
     include: {
       material: { select: { groupId: true } },
+      shopItem: { select: { id: true } },
       submission: { select: { studentId: true, homework: { select: { groupId: true } } } },
       homework: { select: { groupId: true } },
       message: { select: { threadId: true } },
@@ -126,6 +127,7 @@ export async function canAccessFile(u: AuthUser, fileId: string) {
     return false;
   };
 
+  if (f.shopItem) return f; // doʻkon rasmlari — barcha kabinetlarga
   if (f.material) {
     if (!f.material.groupId) return f; // umumiy resurslar bazasi — barcha foydalanuvchilarga
     return (await inGroup(f.material.groupId)) ? f : null;

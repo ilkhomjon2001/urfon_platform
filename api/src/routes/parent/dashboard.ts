@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.js";
 import { config } from "../../config.js";
 import { coinTitle } from "../../config/gamification.js";
+import { earnedTotal } from "../../lib/coins.js";
 import { parse } from "../../lib/http.js";
 import { addDays, endOfDayTz, startOfDayTz, startOfMonthTz } from "../../lib/dates.js";
 import {
@@ -213,7 +214,7 @@ export default async function dashboard(app: FastifyInstance) {
     }
 
     const balance = child.coins.balance;
-    const title = coinTitle(balance);
+    const title = coinTitle(await earnedTotal(prisma, studentId));
 
     // ── Faoliyat lentasi ──
     type Activity = { id: string; type: "grade" | "attendance" | "homework" | "material"; at: Date; [k: string]: unknown };

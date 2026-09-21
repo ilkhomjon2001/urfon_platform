@@ -93,3 +93,12 @@ export async function touchStreak(db: Db, studentId: string, at = new Date()) {
     await awardCoins(db, { studentId, reason: "STREAK", ...coinRef.day(today), at });
   }
 }
+
+/**
+ * Jami yigʻilgan tanga (sarflanganlar hisobga olinmaydi). Unvonlar shunga qarab beriladi —
+ * doʻkonda xarid qilgan bola unvonini yoʻqotmasin.
+ */
+export async function earnedTotal(db: Db, studentId: string) {
+  const r = await db.coinTransaction.aggregate({ where: { studentId, amount: { gt: 0 } }, _sum: { amount: true } });
+  return r._sum.amount ?? 0;
+}

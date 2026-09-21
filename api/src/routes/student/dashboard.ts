@@ -3,6 +3,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../db.js";
 import { GAMIFICATION, coinTitle } from "../../config/gamification.js";
+import { earnedTotal } from "../../lib/coins.js";
 import { addDays, dbDateYmd, endOfDayTz, startOfDayTz, ymdTz } from "../../lib/dates.js";
 import {
   ATTENDANCE_LABEL,
@@ -229,7 +230,7 @@ export default async function dashboard(app: FastifyInstance) {
         firstName,
         code: profile?.code ?? null,
         coinBalance: balance,
-        title: coinTitle(balance),
+        title: coinTitle(await earnedTotal(prisma, studentId)),
         streakDays: profile?.streakDays ?? 0,
         streakActiveToday: !!profile?.lastStreakDate && dbDateYmd(profile.lastStreakDate) === ymdTz(now),
       },

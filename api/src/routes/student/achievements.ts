@@ -8,6 +8,7 @@ import type { CoinTransaction } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db.js";
 import { GAMIFICATION, coinTitle } from "../../config/gamification.js";
+import { earnedTotal } from "../../lib/coins.js";
 import { addDays, dbDateYmd, startOfMonthTz, ymdTz } from "../../lib/dates.js";
 import { paged, paginate, parse } from "../../lib/http.js";
 import { COIN_REASON_LABEL, activeIds, myEnrollments, primaryEnrollment } from "./shared.js";
@@ -58,6 +59,10 @@ async function describe(rows: (CoinTransaction & { createdBy: { fullName: string
       if (r.reason === "ATTENDANCE") title = room ? `Darsga keldi (${room})` : "Darsga keldi";
       else if (r.reason === "ACTIVITY") title = "Darsdagi faollik";
       detail = detail ?? lesson.title;
+    } else if (r.refType === "shop_order") {
+      title = r.note ?? "Doʻkondan xarid";
+      detail = null;
+      link = "/oquvchi/dokon";
     } else if (r.reason === "STREAK") {
       title = "Kunlik seriya";
     }
@@ -105,7 +110,8 @@ export default async function achievements(app: FastifyInstance) {
     const activeToday = !!profile?.lastStreakDate && dbDateYmd(profile.lastStreakDate) === ymdTz(now);
 
     // ── Unvon ──
-    const t = coinTitle(balance);
+    const earned0 = await earnedTotal(prisma, studentId);
+    const t = coinTitle(earned0);
     const titles = GAMIFICATION.titles;
     const curIdx = titles.findIndex((x) => x.name === t.current);
     const curMin = titles[curIdx]?.min ?? 0;
@@ -113,9 +119,10 @@ export default async function achievements(app: FastifyInstance) {
     const title = {
       current: t.current,
       currentMin: curMin,
+      earned: earned0,
       next: t.next && nextMin != null ? { name: t.next.name, remaining: t.next.remaining, target: nextMin } : null,
-      progress: nextMin != null ? Math.round(((balance - curMin) / (nextMin - curMin)) * 100) : 100,
-      all: titles.map((x) => ({ name: x.name, min: x.min, reached: balance >= x.min })),
+      progress: nextMin != null ? Math.round(((earned0 - curMin) / (nextMin - curMin)) * 100) : 100,
+      all: titles.map((x) => ({ name: x.name, min: x.min, reached: earned0 >= x.min })),
     };
 
     // ── O'z o'sishi: haftalik seriya (faqat yig'ilgan, ya'ni musbat) ──

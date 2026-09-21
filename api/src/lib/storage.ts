@@ -134,7 +134,7 @@ export async function sendFile(reply: FastifyReply, f: DbFile, inline = true) {
 export async function attachFiles(db: Db, fileIds: string[], uploadedById: string, links: FileLinks) {
   if (!fileIds.length) return 0;
   const r = await db.file.updateMany({
-    where: { id: { in: fileIds }, uploadedById, submissionId: null, homeworkId: null, messageId: null, material: { is: null } },
+    where: { id: { in: fileIds }, uploadedById, submissionId: null, homeworkId: null, messageId: null, material: { is: null }, shopItem: { is: null } },
     data: links,
   });
   if (r.count !== fileIds.length) throw badRequest("Fayl topilmadi yoki allaqachon ishlatilgan");

@@ -14,7 +14,7 @@ export async function runCleanup(now = new Date()) {
   });
   const orphanWhere = {
     createdAt: { lt: new Date(now.getTime() - DAY) },
-    submissionId: null, homeworkId: null, messageId: null, material: { is: null },
+    submissionId: null, homeworkId: null, messageId: null, material: { is: null }, shopItem: { is: null },
   };
   const orphans = await prisma.file.findMany({ where: orphanWhere, select: { id: true, storageKey: true }, take: 5000 });
   if (orphans.length) {

@@ -70,6 +70,9 @@ model User {
   paymentTxsMade  PaymentTransaction[] @relation("TxCreatedBy")
   paymentTxsVoid  PaymentTransaction[] @relation("TxReversedBy")
   coinsGiven      CoinTransaction[]   @relation("CoinGivenBy")
+  shopOrders      ShopOrder[]         @relation("ShopOrderStudent")
+  shopRequests    ShopOrder[]         @relation("ShopOrderRequestedBy")
+  shopHandled     ShopOrder[]         @relation("ShopOrderHandledBy")
 
   @@index([role])
 }
@@ -544,6 +547,7 @@ model File {
   homework     Homework?   @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
   message      Message?    @relation(fields: [messageId], references: [id], onDelete: Cascade)
   material     Material?   @relation("MaterialFile")
+  shopItem     ShopItem?   @relation("ShopItemImage")
 }
 
 // ─────────────────────────── Xabarlar ───────────────────────────
@@ -706,6 +710,66 @@ model CoinTransaction {
   @@unique([studentId, reason, refType, refId])
   @@index([studentId, createdAt])
   @@index([groupId, createdAt])
+}
+
+// ─────────────────────────── Tanga doʻkoni ───────────────────────────
+// Oʻquvchi yigʻgan kumush tangalarni doʻkondagi narsalarga almashtiradi (oʻzi yoki ota-onasi orqali).
+// Buyurtma berilganda tanga darhol yechiladi (CoinTransaction SPEND, refType "shop_order"),
+// admin narsani qoʻliga topshiradi (DELIVERED) yoki bekor qiladi (CANCELLED — tanga va zaxira qaytadi).
+
+enum ShopCategory {
+  STATIONERY // oʻquv qurollari
+  SWAG // URFON mahsulotlari
+  PRIVILEGE // imtiyozlar (masalan, uy vazifasidan ozod)
+  GIFT // sovgʻalar
+}
+
+enum ShopOrderStatus {
+  PENDING // tanga yechildi, topshirilishi kutilmoqda
+  DELIVERED // qoʻliga berildi
+  CANCELLED // bekor qilindi, tanga qaytarildi
+}
+
+model ShopItem {
+  id              String       @id @default(cuid())
+  title           String
+  description     String?
+  category        ShopCategory @default(GIFT)
+  price           Int // tangada
+  stock           Int? // null — cheksiz
+  perStudentLimit Int? // bitta oʻquvchi necha marta olishi mumkin (null — cheklovsiz)
+  imageFileId     String?      @unique
+  isActive        Boolean      @default(true)
+  sort            Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  image           File?        @relation("ShopItemImage", fields: [imageFileId], references: [id], onDelete: SetNull)
+  orders          ShopOrder[]
+
+  @@index([isActive, sort])
+}
+
+model ShopOrder {
+  id            String          @id @default(cuid())
+  number        Int             @unique @default(autoincrement()) // "#0012" — topshirishda aytiladi
+  itemId        String
+  studentId     String
+  price         Int // buyurtma paytidagi narx
+  status        ShopOrderStatus @default(PENDING)
+  requestedById String
+  note          String?
+  cancelReason  String?
+  handledById   String?
+  handledAt     DateTime?
+  createdAt     DateTime        @default(now())
+  item          ShopItem        @relation(fields: [itemId], references: [id])
+  student       User            @relation("ShopOrderStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  requestedBy   User            @relation("ShopOrderRequestedBy", fields: [requestedById], references: [id])
+  handledBy     User?           @relation("ShopOrderHandledBy", fields: [handledById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([studentId, createdAt])
+  @@index([itemId])
 }
 
 // ─────────────────────────── Audit, bildirishnoma, Telegram ───────────────────────────

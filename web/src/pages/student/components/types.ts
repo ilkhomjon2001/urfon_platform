@@ -391,6 +391,8 @@ export interface Achievements {
   title: {
     current: string;
     currentMin: number;
+    /** jami yigʻilgan tanga (unvon shunga qarab) */
+    earned: number;
     next: { name: string; remaining: number; target: number } | null;
     progress: number;
     all: { name: string; min: number; reached: boolean }[];

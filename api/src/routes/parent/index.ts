@@ -7,6 +7,7 @@ import lessons from "./lessons.js";
 import grades from "./grades.js";
 import homework from "./homework.js";
 import payments from "./payments.js";
+import shop from "./shop.js";
 
 export default async function parentRoutes(app: FastifyInstance) {
   app.addHook("onRequest", authenticate);
@@ -16,4 +17,5 @@ export default async function parentRoutes(app: FastifyInstance) {
   await app.register(grades);
   await app.register(homework);
   await app.register(payments);
+  await app.register(shop);
 }
