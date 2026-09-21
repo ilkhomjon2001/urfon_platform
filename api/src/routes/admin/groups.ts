@@ -24,6 +24,7 @@ const zDays = z
 const fields = {
   name: z.string().trim().min(2, "Guruh nomi kamida 2 belgidan iborat boʻlsin").max(80),
   levelId: zId.nullable().optional(),
+  ageGroup: z.enum(["TEENS", "KIDS"]).optional(),
   roomId: zId.nullable().optional(),
   days: zDays,
   startTime: zTime,
@@ -92,11 +93,12 @@ async function nextCode(tx: Tx) {
 /** Audit uchun o'qiladigan holat. */
 function snapshot(g: {
   name: string; days: number[]; startTime: string; endTime: string; capacity: number; monthlyFee: number;
-  startDate: Date; totalLessons: number; status: string;
+  startDate: Date; totalLessons: number; status: string; ageGroup?: string;
 }, names: { level?: string | null; room?: string | null; teacher?: string | null }) {
   return {
     name: g.name,
     level: names.level ?? null,
+    ageGroup: g.ageGroup === "KIDS" ? "8–12 yosh" : "13–16 yosh",
     room: names.room ?? null,
     teacher: names.teacher ?? null,
     schedule: scheduleText(g.days, g.startTime, g.endTime),
@@ -169,6 +171,7 @@ function toRow(g: GroupFull, s: Awaited<ReturnType<typeof groupStats>>) {
     name: g.name,
     status: g.status,
     level: g.level ? { id: g.level.id, code: g.level.code, name: g.level.name, label: levelLabel(g.level) } : null,
+    ageGroup: g.ageGroup,
     teacher: g.teacher
       ? {
           id: g.teacher.id, fullName: g.teacher.fullName, avatarUrl: g.teacher.avatarUrl, title: g.teacher.title,
@@ -380,7 +383,7 @@ export default async function groups(app: FastifyInstance) {
       const code = await nextCode(tx);
       const g = await tx.group.create({
         data: {
-          code, name: b.name, levelId: b.levelId ?? null, roomId: b.roomId ?? null, teacherId: b.teacherId ?? null,
+          code, name: b.name, levelId: b.levelId ?? null, ageGroup: b.ageGroup ?? "TEENS", roomId: b.roomId ?? null, teacherId: b.teacherId ?? null,
           days: b.days, startTime: b.startTime, endTime: b.endTime, capacity: b.capacity, monthlyFee: b.monthlyFee,
           startDate, totalLessons: b.totalLessons, status: b.status,
         },
@@ -427,6 +430,7 @@ export default async function groups(app: FastifyInstance) {
     const next = {
       name: b.name ?? g.name,
       levelId: b.levelId !== undefined ? b.levelId : g.levelId,
+      ageGroup: b.ageGroup ?? g.ageGroup,
       roomId: b.roomId !== undefined ? b.roomId : g.roomId,
       days: b.days ?? [...g.days].sort((x, y) => x - y),
       startTime: b.startTime ?? g.startTime,

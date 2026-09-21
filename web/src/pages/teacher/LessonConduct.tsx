@@ -681,7 +681,7 @@ function TopicCard({ d, className }: { d: LessonResponse; className?: string }) 
                       {t.lessonPlan?.length ? <LessonPlanToday plan={t.lessonPlan} part={t.part} /> : null}
                       {t.lessonPlan?.length && d.group.level ? (
                         <Link
-                          to={`/ustoz/dars-rejalari?level=${d.group.level.id}&unit=${t.id}&part=${t.part}`}
+                          to={`/ustoz/dars-rejalari?level=${d.group.level.id}&track=${d.group.ageGroup === "KIDS" ? "kids" : "teen"}&unit=${t.id}&part=${t.part}`}
                           className="mt-2 inline-flex items-center gap-1.5 font-label-md text-label-md text-primary hover:underline"
                         >
                           <Icon name="open_in_new" size={16} />

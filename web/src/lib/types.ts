@@ -131,8 +131,14 @@ export interface PlanUnitDto {
   lessons: PlanLesson[];
 }
 
+/** Oʻqish sahifasidagi yosh toifasi: teen = 13–16, kids = 8–12 */
+export type PlanTrack = "teen" | "kids";
+
 export interface LevelPlanResponse {
   level: PlanLevel;
+  track: PlanTrack;
+  /** qaysi yosh toifasi uchun reja bor */
+  tracks: Record<PlanTrack, boolean>;
   units: PlanUnitDto[];
   totalLessons: number;
 }

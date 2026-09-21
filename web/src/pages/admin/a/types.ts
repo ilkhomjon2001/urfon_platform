@@ -36,6 +36,8 @@ export interface GroupRow {
   name: string;
   status: GroupStatus;
   level: LevelRef | null;
+  /** 13–16 (TEENS) yoki 8–12 (KIDS) */
+  ageGroup: "TEENS" | "KIDS";
   teacher: TeacherRef | null;
   room: RoomRef | null;
   days: number[];
@@ -277,6 +279,8 @@ export interface TopicRow {
   hours: number;
   /** darsma-dars reja: [{ focus, sb, steps[], homework }] */
   lessonPlan: PlanLesson[] | null;
+  /** 8–12 yosh rejasidagi darslar soni (0 — alohida reja yoʻq) */
+  kidsLessons: number;
   status: TopicStatus;
   available: boolean;
   author: { id: string; fullName: string; title: string | null } | null;

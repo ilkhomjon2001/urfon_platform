@@ -159,8 +159,8 @@ model Room {
 
 model Level {
   id          String  @id @default(cuid())
-  code        String  @unique // "L1".."L6", "K1", "K2", "CEFR", "IELTS"
-  name        String // "Boshlangʻich qadam"
+  code        String  @unique // "STARTER", "BEGINNER", "ELEMENTARY" … "CEFR", "IELTS" — har level alohida kitob
+  name        String // "Beginner"
   order       Int
   audience    String? // kimga moʻljallangan: "13–16 yosh", "8–12 yosh"
   cefr        String? // xalqaro daraja: "Pre-A1 → A1", "B1 → B2"
@@ -188,7 +188,8 @@ model Topic {
   grammar      String?
   lessonsCount Int           @default(4)
   hours        Float         @default(6)
-  lessonPlan   Json? // darsma-dars reja: [{ focus, sb, steps[], homework }] — faqat ustoz va admin koʻradi
+  lessonPlan   Json? // darsma-dars reja (13–16 yosh): [{ focus, sb, maqsad[], lugat[], resurslar[], blocks[], uyga[], ustozga }] — faqat ustoz va admin koʻradi
+  kidsPlan     Json? // xuddi shu unit, 8–12 yosh uchun (sekinroq, koʻproq darsga boʻlingan); boʻlmasa lessonPlan ishlatiladi
   status       TopicStatus   @default(PUBLISHED)
   authorId     String?
   createdAt    DateTime      @default(now())
@@ -202,6 +203,12 @@ model Topic {
   @@unique([levelId, unit])
 }
 
+// Guruhning yosh toifasi: bitta level (kitob) ichida darslar surʼati va rejasi shunga qarab tanlanadi
+enum AgeGroup {
+  TEENS // 13–16 yosh
+  KIDS // 8–12 yosh
+}
+
 enum GroupStatus {
   ENROLLING // yangi qabul
   ACTIVE
@@ -213,6 +220,7 @@ model Group {
   code         String            @unique // "GR-03"
   name         String // "IELTS Foundation #3"
   levelId      String?
+  ageGroup     AgeGroup          @default(TEENS) // 13–16 yoki 8–12: level ichidagi qaysi dars rejasi ishlatiladi
   teacherId    String? // null = ustoz biriktirilmagan
   roomId       String?
   days         Int[] // ISO hafta kunlari: 1=Du … 7=Ya

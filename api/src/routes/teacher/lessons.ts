@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AttendanceStatus, Prisma } from "@prisma/client";
 import { prisma, type Tx } from "../../db.js";
+import { planFor } from "../../lib/lesson-plans.js";
 import { parse, auditCtx, idParam, zGrade } from "../../lib/http.js";
 import { assertTeacherLesson } from "../../lib/access.js";
 import { writeAudit } from "../../lib/audit.js";
@@ -100,7 +101,7 @@ export default async function lessons(app: FastifyInstance) {
         group: { include: { level: true, room: true } },
         topics: {
           include: {
-            topic: { select: { id: true, unit: true, title: true, description: true, grammar: true, vocabulary: true, objectives: true, lessonsCount: true, lessonPlan: true } },
+            topic: { select: { id: true, unit: true, title: true, description: true, grammar: true, vocabulary: true, objectives: true, lessonsCount: true, lessonPlan: true, kidsPlan: true } },
           },
         },
         attendance: { include: { markedBy: { select: { id: true, fullName: true } } } },
@@ -189,6 +190,9 @@ export default async function lessons(app: FastifyInstance) {
         if (r.lesson.startsAt > cur.lastAt) cur.lastAt = r.lesson.startsAt;
       }
     }
+    const track = g.ageGroup === "KIDS" ? "kids" : "teen";
+    // guruh yoshiga mos darslar soni: 8–12 yoshda unit koʻproq darsga boʻlingan
+    const unitLessons = (t: { lessonsCount: number; lessonPlan: unknown; kidsPlan: unknown }) => planFor(t, track).length || t.lessonsCount;
     const availableTopics = levelTopics.map((t) => ({
       id: t.id,
       unit: t.unit,
@@ -197,7 +201,7 @@ export default async function lessons(app: FastifyInstance) {
       description: t.description,
       grammar: t.grammar,
       vocabulary: t.vocabulary,
-      lessonsCount: t.lessonsCount,
+      lessonsCount: unitLessons(t),
       hours: t.hours,
       coveredLessons: coveredBy.get(t.id)?.count ?? 0,
       covered: coveredBy.has(t.id),
@@ -230,6 +234,7 @@ export default async function lessons(app: FastifyInstance) {
         name: g.name,
         status: g.status,
         level: levelDto(g.level),
+        ageGroup: g.ageGroup,
         room: roomDto(g.room),
         schedule: { days: g.days, startTime: g.startTime, endTime: g.endTime, text: scheduleText(g.days, g.startTime, g.endTime) },
         totalLessons: g.totalLessons,
@@ -238,7 +243,12 @@ export default async function lessons(app: FastifyInstance) {
       counts,
       // part — bu dars unitning nechanchi darsi (dars rejasidagi qaysi band koʻrsatiladi)
       topics: l.topics
-        .map((lt) => ({ ...lt.topic, part: coveredRows.filter((r) => r.topicId === lt.topic.id && r.lesson.startsAt < l.startsAt).length + 1 }))
+        .map(({ topic: { kidsPlan, ...topic } }) => ({
+          ...topic,
+          lessonPlan: planFor({ lessonPlan: topic.lessonPlan, kidsPlan }, track),
+          lessonsCount: unitLessons({ ...topic, kidsPlan }),
+          part: coveredRows.filter((r) => r.topicId === topic.id && r.lesson.startsAt < l.startsAt).length + 1,
+        }))
         .sort((a, b) => a.unit - b.unit),
       availableTopics,
       suggestedTopicId: suggested?.id ?? null,

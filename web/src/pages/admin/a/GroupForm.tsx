@@ -13,6 +13,7 @@ import type { AdminStudentItem, GroupDetail, GroupRow } from "./types";
 interface FormState {
   name: string;
   levelId: string;
+  ageGroup: "TEENS" | "KIDS";
   roomId: string | null;
   teacherId: string | null;
   days: number[];
@@ -28,6 +29,7 @@ interface FormState {
 const empty = (): FormState => ({
   name: "",
   levelId: "",
+  ageGroup: "TEENS",
   roomId: null,
   teacherId: null,
   days: [1, 3, 5],
@@ -43,6 +45,7 @@ const empty = (): FormState => ({
 const fromGroup = (g: GroupRow): FormState => ({
   name: g.name,
   levelId: g.level?.id ?? "",
+  ageGroup: g.ageGroup ?? "TEENS",
   roomId: g.room?.id ?? null,
   teacherId: g.teacher?.id ?? null,
   days: g.days,
@@ -143,6 +146,7 @@ export function GroupFormDialog({
     const body = {
       name: f.name.trim(),
       levelId: f.levelId || null,
+      ageGroup: f.ageGroup,
       roomId: f.roomId,
       days: f.days,
       startTime: f.startTime,
@@ -238,6 +242,18 @@ export function GroupFormDialog({
                 options={levels.map((l) => ({ value: l.id, label: l.label ?? l.name }))}
               />
             )}
+          </Field>
+          <Field label="Yosh toifasi" hint="Dars rejasi va darslar soni shunga qarab tanlanadi">
+            <Tabs value={f.ageGroup} onValueChange={(v) => set("ageGroup", v as FormState["ageGroup"])} variant="segmented">
+              <TabsList className="w-full">
+                <TabsTrigger value="TEENS" className="flex-1 justify-center">
+                  13–16 yosh
+                </TabsTrigger>
+                <TabsTrigger value="KIDS" className="flex-1 justify-center">
+                  8–12 yosh
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </Field>
           <Field label="Guruh holati">
             <Tabs value={f.status} onValueChange={(v) => set("status", v as FormState["status"])} variant="segmented">

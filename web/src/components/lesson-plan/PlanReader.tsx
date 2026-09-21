@@ -1,12 +1,12 @@
-// Dars rejalarini oʻqish sahifasi: chapda bosqich va darslar roʻyxati, oʻngda bitta darsning toʻliq rejasi.
-// Ustoz darsga tayyorlanayotganda yoki dars paytida ekranda ochib qoʻyadi — shuning uchun matn yirik,
-// boʻlimlar raqamlangan, har bosqichning vaqti koʻrinib turadi. "Chop etish" A4 ga chiqaradi.
+// Dars rejalari (B varianti): avval levelning unit kartalari, dars bosilganda — shu darsning toʻliq sahifasi.
+// Har level alohida kitob; bitta level ichida 13–16 va 8–12 yosh uchun alohida reja (almashtirgich).
+// Ustoz darsga tayyorlanayotganda yoki dars paytida ekranda ochib qoʻyadi — matn yirik, har bosqichning vaqti koʻrinadi.
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Alert, Button, EmptyState, Field, Icon, Select, Skeleton } from "@/components/ui";
+import { Alert, Button, Field, Icon, Select, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { useApiQuery } from "@/lib/query";
-import type { LevelPlanResponse, PlanLesson, PlanUnitDto } from "@/lib/types";
+import type { LevelPlanResponse, PlanLesson, PlanTrack, PlanUnitDto } from "@/lib/types";
 
 export interface ReaderLevel {
   id: string;
@@ -17,7 +17,14 @@ export interface ReaderLevel {
 
 type Flat = { unit: PlanUnitDto; lesson: PlanLesson; part: number; parts: number; no: number };
 
+const TRACK_LABEL: Record<PlanTrack, string> = { teen: "13–16 yosh", kids: "8–12 yosh" };
 const clock = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+
+/** "Unit 2 · My family + Culture" → { tag: "Unit 2", name: "My family + Culture" } */
+function unitName(u: PlanUnitDto) {
+  const name = u.title.replace(/^Unit\s+\d+\s*[·:.-]\s*/i, "").replace(/^Starter\s*[·:.-]\s*/i, "");
+  return { tag: u.unit === 0 ? "Starter" : `Unit ${u.unit}`, name: name || u.title };
+}
 
 /** "fans – muxlislar" → ["fans", "muxlislar"] */
 function splitTerm(s: string): [string, string] {
@@ -64,15 +71,71 @@ function Meta({ label, value, sub }: { label: string; value: ReactNode; sub?: Re
   );
 }
 
-/** Bitta darsning toʻliq sahifasi. */
-function LessonPage({ f, total, level, prev, next, go }: {
-  f: Flat;
-  total: number;
-  level: LevelPlanResponse["level"];
-  prev?: Flat;
-  next?: Flat;
-  go: (no: number) => void;
-}) {
+/** Yosh toifasi almashtirgichi: 13–16 | 8–12 */
+function TrackSwitch({ track, onChange }: { track: PlanTrack; onChange: (t: PlanTrack) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Yosh toifasi" className="inline-flex rounded-xl bg-surface-container p-1">
+      {(["teen", "kids"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          role="radio"
+          aria-checked={track === t}
+          onClick={() => onChange(t)}
+          className={cn(
+            "h-9 rounded-lg px-4 font-label-lg text-label-lg transition-colors",
+            track === t ? "bg-surface-container-lowest text-primary shadow-card" : "text-on-surface-variant hover:text-on-surface",
+          )}
+        >
+          {TRACK_LABEL[t]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ───────────────────────── 1-ekran: unit kartalari ─────────────────────────
+function UnitGrid({ units, offsets, onOpen }: { units: PlanUnitDto[]; offsets: Map<string, number>; onOpen: (no: number) => void }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      {units.map((u) => {
+        const { tag, name } = unitName(u);
+        const start = offsets.get(u.id) ?? 0;
+        return (
+          <article key={u.id} className="flex flex-col rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 shadow-card">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-primary">{tag}</span>
+              <span className="rounded-full bg-surface-container px-2.5 py-0.5 text-[12px] font-semibold text-on-surface-variant">{u.lessons.length} dars</span>
+            </div>
+            <h3 className="mt-2 text-balance font-display text-[19px] font-bold leading-7 text-on-surface">{name}</h3>
+            {u.grammar ? <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-on-surface-variant">{u.grammar}</p> : null}
+            <ol className="mt-4 flex flex-col gap-1.5">
+              {u.lessons.map((l, i) => {
+                const no = start + i + 1;
+                return (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(no)}
+                      className="group flex w-full items-center gap-3 rounded-xl border border-transparent bg-surface-container-low px-3 py-2.5 text-left transition-colors hover:border-primary hover:bg-primary-fixed/40"
+                    >
+                      <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg bg-surface-container-lowest px-1 text-[13px] font-bold tabular-nums text-primary">{no}</span>
+                      <span className="min-w-0 flex-1 text-[15px] font-medium leading-5 text-on-surface">{l.focus}</span>
+                      <Icon name="chevron_right" size={18} className="shrink-0 text-on-surface-muted group-hover:text-primary" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+// ───────────────────────── 2-ekran: bitta dars ─────────────────────────
+function LessonPage({ f, prev, next, go }: { f: Flat; prev?: Flat; next?: Flat; go: (no: number) => void }) {
   const { unit: u, lesson: l } = f;
   const blocks = l.blocks ?? [];
   const minutes = blocks.reduce((s, b) => s + b.minutes, 0);
@@ -83,26 +146,16 @@ function LessonPage({ f, total, level, prev, next, go }: {
     return { ...b, start, end: t };
   });
   const isTest = !l.sb || l.sb === "—";
+  const { tag, name } = unitName(u);
 
   return (
-    <article className="min-w-0 max-w-[900px]">
-      <nav aria-label="Joylashuv" className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[13px] text-on-surface-variant">
-        <span>{level.label}</span>
-        <Icon name="chevron_right" size={16} className="text-outline" />
-        <span>Unit {u.unit}</span>
-        <Icon name="chevron_right" size={16} className="text-outline" />
-        <span className="font-semibold text-primary">{f.part}-dars</span>
-      </nav>
-
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+    <article className="min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
         {isTest ? (
-          <span className="rounded-full bg-tertiary-fixed px-3 py-1 font-mono text-[12px] font-semibold uppercase tracking-wider text-tertiary">Nazorat darsi</span>
+          <span className="rounded-full bg-tertiary-fixed px-3 py-1 text-[12px] font-bold uppercase tracking-wider text-tertiary">Nazorat darsi</span>
         ) : (
-          <span className="rounded-full bg-primary-fixed px-3 py-1 font-mono text-[12px] font-semibold uppercase tracking-wider text-primary">SB {l.sb}</span>
+          <span className="rounded-full bg-primary-fixed px-3 py-1 text-[12px] font-bold uppercase tracking-wider text-primary">Kitob: {l.sb}-bet</span>
         )}
-        {level.audience ? (
-          <span className="rounded-full bg-surface-container px-3 py-1 font-mono text-[12px] font-semibold uppercase tracking-wider text-on-surface-variant">{level.audience}</span>
-        ) : null}
         <span className="flex-1" />
         <Button variant="outline" size="sm" icon="print" onClick={() => window.print()} className="print:hidden">
           Chop etish
@@ -110,14 +163,13 @@ function LessonPage({ f, total, level, prev, next, go }: {
       </div>
 
       <h1 className="mt-4 text-balance font-display text-[32px] font-extrabold leading-[40px] tracking-tight text-on-surface sm:text-[44px] sm:leading-[52px]">{l.focus}</h1>
-      <p className="mt-3 text-[17px] leading-7 text-primary">▸ {u.title}</p>
+      <p className="mt-3 text-[17px] leading-7 text-primary">
+        ▸ {tag} · {name}
+      </p>
 
-      <dl className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-outline-variant bg-outline-variant shadow-card sm:grid-cols-2 md:grid-cols-3">
-        <Meta label="Bosqich" value={level.label} sub={[level.audience, level.cefr ? `CEFR ${level.cefr}` : null].filter(Boolean).join(" · ") || undefined} />
-        <Meta label="Unit" value={`Unit ${u.unit}`} sub={`${f.part}-dars (unitda ${f.parts} ta)`} />
-        <Meta label="Dars raqami" value={`${f.no} / ${total}`} sub="bosqich boʻyicha" />
+      <dl className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-outline-variant bg-outline-variant shadow-card sm:grid-cols-3">
+        <Meta label="Unit" value={tag} sub={`${f.part}-dars, unitda ${f.parts} ta`} />
         <Meta label="Grammatika" value={u.grammar || "—"} />
-        <Meta label="Kitob" value={isTest ? "Markaz testi" : `Student Book, ${l.sb}-bet`} />
         <Meta label="Davomiyligi" value={`${minutes || 90} daqiqa`} sub="1,5 soat" />
       </dl>
 
@@ -231,7 +283,7 @@ function LessonPage({ f, total, level, prev, next, go }: {
             onClick={() => go(prev.no)}
             className="flex flex-col items-start gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-left transition-colors hover:border-primary"
           >
-            <span className="flex items-center gap-1 font-mono text-[12px] font-semibold uppercase tracking-wider text-on-surface-muted">
+            <span className="flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wider text-on-surface-muted">
               <Icon name="chevron_left" size={16} /> Oldingi dars
             </span>
             <span className="line-clamp-2 text-[16px] font-semibold leading-6 text-on-surface">
@@ -247,7 +299,7 @@ function LessonPage({ f, total, level, prev, next, go }: {
             onClick={() => go(next.no)}
             className="flex flex-col items-end gap-1 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 text-right transition-colors hover:border-primary"
           >
-            <span className="flex items-center gap-1 font-mono text-[12px] font-semibold uppercase tracking-wider text-on-surface-muted">
+            <span className="flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wider text-on-surface-muted">
               Keyingi dars <Icon name="chevron_right" size={16} />
             </span>
             <span className="line-clamp-2 text-[16px] font-semibold leading-6 text-on-surface">
@@ -261,14 +313,15 @@ function LessonPage({ f, total, level, prev, next, go }: {
 }
 
 /**
- * URL: ?level=<id>&dars=<bosqichdagi tartib raqami>.
- * Boshqa sahifadan havola: ?level=<id>&unit=<topicId>&part=<unitdagi dars> — kerakli darsga oʻtib, keyin dars= ga aylanadi.
+ * URL: ?level=<id>&track=teen|kids — unit kartalari; &dars=<leveldagi tartib raqami> — bitta dars.
+ * Boshqa sahifadan havola: ?level=<id>&track=…&unit=<topicId>&part=<unitdagi dars> — kerakli darsga oʻtib, dars= ga aylanadi.
  */
-export function PlanReader({ levels, loadingLevels, defaultLevelId, planPath, queryKey }: {
+export function PlanReader({ levels, loadingLevels, defaultLevelId, defaultTrack, planPath, queryKey }: {
   levels: ReaderLevel[];
   loadingLevels?: boolean;
   defaultLevelId?: string | null;
-  planPath: (levelId: string) => string;
+  defaultTrack?: PlanTrack;
+  planPath: (levelId: string, track: PlanTrack) => string;
   queryKey: readonly unknown[];
 }) {
   const [params, setParams] = useSearchParams();
@@ -282,142 +335,143 @@ export function PlanReader({ levels, loadingLevels, defaultLevelId, planPath, qu
         }
         return p;
       },
-      { replace: true },
+      { replace: false },
     );
 
   const levelId = params.get("level") || defaultLevelId || levels[0]?.id || null;
-  const q = useApiQuery<LevelPlanResponse>([...queryKey, levelId], levelId ? planPath(levelId) : null);
+  const wantTrack: PlanTrack = params.get("track") === "kids" ? "kids" : params.get("track") === "teen" ? "teen" : (defaultTrack ?? "teen");
+  const q = useApiQuery<LevelPlanResponse>([...queryKey, levelId, wantTrack], levelId ? planPath(levelId, wantTrack) : null);
+  const data = q.data;
+  const hasKids = !!data?.tracks.kids;
+  const track: PlanTrack = hasKids ? wantTrack : "teen";
 
-  const { flat, offsets } = useMemo(() => {
+  const { flat, offsets, units } = useMemo(() => {
     const out: Flat[] = [];
     const off = new Map<string, number>();
-    for (const u of q.data?.units ?? []) {
+    const list = (data?.units ?? []).filter((u) => u.lessons.length);
+    for (const u of list) {
       off.set(u.id, out.length);
       u.lessons.forEach((lesson, i) => out.push({ unit: u, lesson, part: i + 1, parts: u.lessons.length, no: out.length + 1 }));
     }
-    return { flat: out, offsets: off };
-  }, [q.data]);
+    return { flat: out, offsets: off, units: list };
+  }, [data]);
 
+  // boshqa sahifadan (Mavzular bazasi, ustozning dars sahifasi) unit + part bilan kelganda
   const unitParam = params.get("unit");
   const partParam = params.get("part");
   useEffect(() => {
     if (!unitParam || !flat.length) return;
     const part = Number(partParam) || 1;
     const hit = flat.find((f) => f.unit.id === unitParam && f.part === part) ?? flat.find((f) => f.unit.id === unitParam);
-    patch({ dars: hit ? String(hit.no) : null, unit: null, part: null });
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        if (hit) p.set("dars", String(hit.no));
+        p.delete("unit");
+        p.delete("part");
+        return p;
+      },
+      { replace: true },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitParam, partParam, flat]);
 
-  const dars = Math.min(Math.max(Number(params.get("dars")) || 1, 1), Math.max(flat.length, 1));
-  const cur = flat[dars - 1];
+  const darsParam = Number(params.get("dars")) || 0;
+  const dars = darsParam ? Math.min(Math.max(darsParam, 1), Math.max(flat.length, 1)) : 0;
+  const cur = dars ? flat[dars - 1] : undefined;
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
-  }, [dars, levelId]);
+  }, [dars, levelId, track]);
 
   const go = (no: number) => patch({ dars: String(no) });
   const selected = levels.find((l) => l.id === levelId);
-  const units = (q.data?.units ?? []).filter((u) => u.lessons.length);
+  const months = flat.length ? Math.max(1, Math.round(flat.length / 3 / 4.3)) : 0;
+
+  // ── Tepadagi panel: level, yosh toifasi, (darsda) orqaga va varaqlash ──
+  const toolbar = (
+    <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 print:hidden">
+      {cur ? (
+        <Button variant="outline" icon="arrow_back" onClick={() => patch({ dars: null })}>
+          Unitlarga qaytish
+        </Button>
+      ) : (
+        <Field label="Level" className="min-w-[min(100%,300px)]">
+          <Select
+            value={levelId ?? ""}
+            onChange={(e) => patch({ level: e.target.value, dars: null })}
+            disabled={loadingLevels || !levels.length}
+            placeholder={loadingLevels ? "Yuklanmoqda…" : "Levelni tanlang"}
+            options={levels.map((l) => ({ value: l.id, label: l.label }))}
+          />
+        </Field>
+      )}
+      {hasKids ? <TrackSwitch track={track} onChange={(t) => patch({ track: t, dars: null })} /> : null}
+      <span className="flex-1" />
+      {cur ? (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" icon="chevron_left" onClick={() => go(dars - 1)} disabled={dars <= 1} aria-label="Oldingi dars" />
+          <span className="min-w-[88px] text-center font-display text-[16px] font-bold tabular-nums text-on-surface">
+            {dars} / {flat.length}
+          </span>
+          <Button variant="navy" icon="chevron_right" onClick={() => go(dars + 1)} disabled={dars >= flat.length} aria-label="Keyingi dars" />
+        </div>
+      ) : flat.length ? (
+        <span className="text-[14px] text-on-surface-variant">
+          {units.length} unit · {flat.length} dars · ≈ {months} oy
+        </span>
+      ) : null}
+    </div>
+  );
+
+  let body: ReactNode;
+  if (q.isLoading || (loadingLevels && !data)) {
+    body = (
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-64 w-full rounded-2xl" />
+        ))}
+      </div>
+    );
+  } else if (q.error) {
+    body = (
+      <Alert tone="danger" title="Reja yuklanmadi">
+        {q.error.message}
+      </Alert>
+    );
+  } else if (!flat.length) {
+    // bu levelda hali reja yoʻq — hech narsa koʻrsatilmaydi, faqat qisqa izoh
+    body = (
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest px-6 py-16 text-center">
+        <Icon name="auto_stories" size={36} className="text-on-surface-muted" />
+        <p className="font-display text-[18px] font-bold text-on-surface">{selected?.label ?? "Bu level"} uchun hali dars rejasi yoʻq</p>
+        <p className="max-w-md text-[14px] text-on-surface-variant">Bu level alohida kitob asosida oʻtiladi. Kitob tanlangach, rejalar shu yerda paydo boʻladi.</p>
+      </div>
+    );
+  } else if (cur) {
+    body = (
+      <div className="mx-auto max-w-[960px]">
+        <LessonPage f={cur} prev={flat[dars - 2]} next={flat[dars]} go={go} />
+      </div>
+    );
+  } else {
+    body = (
+      <>
+        {data?.level.description ? <p className="max-w-3xl text-[15px] leading-6 text-on-surface-variant">{data.level.description}</p> : null}
+        <UnitGrid units={units} offsets={offsets} onOpen={go} />
+      </>
+    );
+  }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-10 print:block">
-      <aside className="flex flex-col gap-4 lg:sticky lg:top-20 print:hidden">
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
-          <Field label="Bosqich">
-            <Select
-              value={levelId ?? ""}
-              onChange={(e) => patch({ level: e.target.value, dars: null })}
-              disabled={loadingLevels || !levels.length}
-              placeholder={loadingLevels ? "Yuklanmoqda…" : "Bosqichni tanlang"}
-              options={levels.map((l) => ({ value: l.id, label: `${l.label}${l.audience ? ` — ${l.audience}` : ""}` }))}
-            />
-          </Field>
-          {selected ? (
-            <p className="mt-2 text-[13px] leading-5 text-on-surface-variant">
-              {[selected.audience, selected.cefr ? `CEFR ${selected.cefr}` : null, flat.length ? `${flat.length} dars` : null].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
-          {flat.length ? (
-            <div className="mt-3 lg:hidden">
-              <Field label="Dars">
-                <Select
-                  value={String(dars)}
-                  onChange={(e) => go(Number(e.target.value))}
-                  options={flat.map((f) => ({ value: String(f.no), label: `${f.no}. Unit ${f.unit.unit} · ${f.lesson.focus}` }))}
-                />
-              </Field>
-            </div>
-          ) : null}
-        </div>
-
-        {units.length ? (
-          <nav
-            aria-label="Darslar"
-            className="scrollbar-thin hidden max-h-[calc(100dvh-14rem)] overflow-y-auto rounded-2xl border border-outline-variant bg-surface-container-lowest p-2 lg:block"
-          >
-            {units.map((u) => (
-              <div key={u.id} className="pb-1">
-                <div className="px-3 pb-1.5 pt-3 font-mono text-[11px] font-semibold uppercase leading-4 tracking-[0.1em] text-on-surface-muted">{u.title}</div>
-                {u.lessons.map((l, i) => {
-                  const no = (offsets.get(u.id) ?? 0) + i + 1;
-                  const on = no === dars;
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => go(no)}
-                      aria-current={on ? "true" : undefined}
-                      className={cn(
-                        "flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors",
-                        on ? "bg-primary text-on-primary" : "text-on-surface hover:bg-surface-container-low",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "mt-px flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md px-1 text-[12px] font-bold tabular-nums",
-                          on ? "bg-on-primary/20" : "bg-surface-container text-on-surface-variant",
-                        )}
-                      >
-                        {no}
-                      </span>
-                      <span className="line-clamp-2 text-[14px] font-medium leading-5">{l.focus}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-        ) : null}
-      </aside>
-
-      <div className="min-w-0">
-        {q.isLoading || (loadingLevels && !q.data) ? (
-          <div className="flex max-w-[900px] flex-col gap-4">
-            <Skeleton className="h-6 w-64" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-40 w-full rounded-2xl" />
-            <Skeleton className="h-72 w-full rounded-2xl" />
-          </div>
-        ) : q.error ? (
-          <Alert tone="danger" title="Reja yuklanmadi">
-            {q.error.message}
-          </Alert>
-        ) : !levelId ? (
-          <EmptyState icon="auto_stories" title="Bosqich yoʻq" description="Avval Mavzular bazasida bosqich yarating" />
-        ) : !cur || !q.data ? (
-          <div className="max-w-[900px] rounded-2xl border border-outline-variant bg-surface-container-lowest">
-            <EmptyState
-              icon="auto_stories"
-              title="Bu bosqich uchun darsma-dars reja hali tayyorlanmagan"
-              description={
-                q.data?.level.description || "Mavzular (unitlar) bazada bor, lekin har bir dars uchun batafsil reja yozilmagan. Kitob olingach qoʻshiladi."
-              }
-            />
-          </div>
-        ) : (
-          <LessonPage f={cur} total={flat.length} level={q.data.level} prev={flat[dars - 2]} next={flat[dars]} go={go} />
-        )}
-      </div>
+    <div className={cn("flex flex-col gap-5", cur && "mx-auto w-full max-w-[960px]")}>
+      {toolbar}
+      {cur && selected ? (
+        <p className="font-mono text-[13px] text-on-surface-variant print:hidden">
+          {selected.label} · {TRACK_LABEL[track]} · {unitName(cur.unit).tag}
+        </p>
+      ) : null}
+      {body}
     </div>
   );
 }

@@ -282,6 +282,8 @@ export interface LessonResponse {
     name: string;
     status: GroupStatus;
     level: LevelDto | null;
+    /** 13–16 (TEENS) yoki 8–12 (KIDS) — dars rejasi shunga qarab tanlanadi */
+    ageGroup: "TEENS" | "KIDS";
     room: RoomDto | null;
     schedule: ScheduleDto;
     totalLessons: number;

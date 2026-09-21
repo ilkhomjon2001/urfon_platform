@@ -347,7 +347,7 @@ export default function AdminCurriculumPage() {
             <div className={cn("flex flex-col gap-3", (topicsQ.isFetching || reorder.isPending) && "opacity-80")}>
               {items.map((t, idx) => (
                 <TopicCard
-                  planHref={levelId ? `/admin/dars-rejalari?level=${levelId}&unit=${t.id}` : null}
+                  planHref={levelId ? `/admin/dars-rejalari?level=${levelId}&track=teen&unit=${t.id}` : null}
                   key={t.id}
                   t={t}
                   first={idx === 0}
@@ -524,7 +524,7 @@ function TopicCard({
         {t.lessonPlan?.length && planHref ? (
           <Link to={planHref} className={buttonVariants({ variant: "secondary", size: "sm", className: "mt-3 text-primary" })}>
             <Icon name="auto_stories" size={18} />
-            Dars rejasini ochish · {t.lessonPlan.length} dars
+            Dars rejasini ochish · {t.lessonPlan.length} dars{t.kidsLessons ? ` (8–12 yosh: ${t.kidsLessons})` : ""}
           </Link>
         ) : null}
         {live ? (

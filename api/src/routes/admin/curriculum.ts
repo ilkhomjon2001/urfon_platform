@@ -36,6 +36,8 @@ const levelSnapshot = (l: { code?: string; name: string; order: number; audience
   ...(l.code ? { code: l.code } : {}), name: l.name, order: l.order, audience: l.audience, cefr: l.cefr, weeks: l.weeks, description: l.description,
 });
 
+const trackQuery = z.object({ track: z.enum(["teen", "kids"]).default("teen") });
+
 const STATUS_LABEL = { DRAFT: "Qoralama", PUBLISHED: "Tasdiqlangan", ARCHIVED: "Arxivlangan" } as const;
 const topicName = (t: { unit: number; title: string }) => `Unit ${t.unit} — ${t.title}`;
 
@@ -156,7 +158,8 @@ export default async function curriculum(app: FastifyInstance) {
   // ─── Dars rejalari (oʻqish sahifasi): arxivdan tashqari barcha mavzular ───
   app.get("/curriculum/levels/:id/plan", async (req) => {
     const { id } = parse(idParam, req.params);
-    return levelPlan(id, false);
+    const { track } = parse(trackQuery, req.query);
+    return levelPlan(id, false, track);
   });
 
   // ─── Level mavzulari (unit tartibida) ───
@@ -220,6 +223,7 @@ export default async function curriculum(app: FastifyInstance) {
         lessonsCount: t.lessonsCount,
         hours: t.hours,
         lessonPlan: t.lessonPlan,
+        kidsLessons: Array.isArray(t.kidsPlan) ? t.kidsPlan.length : 0,
         status: t.status,
         available: t.status === "PUBLISHED",
         author: t.author,
@@ -353,7 +357,7 @@ export default async function curriculum(app: FastifyInstance) {
         data: {
           levelId: t.levelId, unit: (max._max.unit ?? 0) + 1, title: `${t.title} (nusxa)`.slice(0, 160),
           description: t.description, objectives: t.objectives, vocabulary: t.vocabulary, grammar: t.grammar,
-          lessonsCount: t.lessonsCount, hours: t.hours, lessonPlan: t.lessonPlan ?? Prisma.DbNull, status: "DRAFT", authorId: req.auth.userId,
+          lessonsCount: t.lessonsCount, hours: t.hours, lessonPlan: t.lessonPlan ?? Prisma.DbNull, kidsPlan: t.kidsPlan ?? Prisma.DbNull, status: "DRAFT", authorId: req.auth.userId,
         },
       });
       await writeAudit(tx, {
