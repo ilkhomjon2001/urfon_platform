@@ -394,7 +394,7 @@ function StudentProfileDialog({
           {s.fullName} <StudentStatusBadge status={s.status} />
         </span>
       }
-      description={`#${s.code} · login ${s.login}${s.mustChangePassword ? " · parolni almashtirishi kerak" : ""}`}
+      description={`#${s.code} · login ${s.login}${s.lastLoginAt ? "" : " · hali kabinetga kirmagan"}`}
       footer={
         <>
           <Button variant="outline" icon="edit" onClick={() => onAction("edit")}>

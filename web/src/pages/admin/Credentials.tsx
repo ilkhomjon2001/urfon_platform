@@ -1,6 +1,7 @@
 // Admin → Kirish maʼlumotlari: oʻquvchi va ota-onalarning login/parollari.
-// Parollar shifrlangan holda saqlanadi — eskisini koʻrsatib boʻlmaydi, faqat yangi vaqtinchalik parol beriladi.
-// Yangilangan parollar shu sahifada bir marta koʻrsatiladi: CSV (Excel) ga yuklash, nusxalash yoki chop etish mumkin.
+// Parollar shifrlangan holda saqlanadi — eskisini koʻrsatib boʻlmaydi, faqat yangi parol berish mumkin.
+// Parol doimiy: oila uni almashtirishga majbur emas. Yangi parollar shu sahifada bir marta koʻrsatiladi:
+// CSV (Excel) ga yuklash, nusxalash yoki chop etish mumkin.
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -105,7 +106,7 @@ export default function AdminCredentialsPage() {
         title="Kirish maʼlumotlari"
         documentTitle="Kirish maʼlumotlari"
         breadcrumbs={[{ label: "Boshqaruv markazi", to: "/admin" }, { label: "Oʻquvchilar va ota-onalar", to: "/admin/oquvchilar" }, { label: "Kirish maʼlumotlari" }]}
-        subtitle="Oʻquvchi va ota-onalarning loginlari; kerakli kishilarga bir yoʻla yangi vaqtinchalik parol berib, roʻyxatni chop etasiz"
+        subtitle="Oʻquvchi va ota-onalarning loginlari; kerakli kishilarga bir yoʻla yangi parol berib, roʻyxatni chop etasiz"
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -119,7 +120,7 @@ export default function AdminCredentialsPage() {
 
       <Alert tone="primary" icon="info" className="mb-6" title="Parollar haqida">
         Parollar bazada shifrlangan holda saqlanadi, shuning uchun eski parolni koʻrsatib boʻlmaydi. Kerakli kishilarni belgilab, <b>«Parol berish»</b> ni bossangiz,
-        ularga yangi vaqtinchalik parol yaratiladi va shu yerda bir marta koʻrsatiladi. Birinchi kirishda tizim parolni almashtirishni soʻraydi.
+        ularga yangi parol yaratiladi va shu yerda bir marta koʻrsatiladi. Parol <b>doimiy</b> — oila uni almashtirishga majbur emas (xohlasa, «Sozlamalar» dan oʻzgartiradi).
       </Alert>
 
       <Card className="overflow-hidden">
@@ -176,7 +177,7 @@ export default function AdminCredentialsPage() {
         description={
           pickedActive
             ? `Belgilanganlardan ${pickedActive} tasi kabinetdan foydalanmoqda — ularning hozirgi paroli ishlamay qoladi va ular tizimdan chiqariladi.`
-            : "Yangi vaqtinchalik parollar roʻyxati shu sahifada bir marta koʻrsatiladi — chop eting yoki yuklab oling."
+            : "Yangi parollar roʻyxati shu sahifada bir marta koʻrsatiladi — chop eting yoki yuklab oling."
         }
         confirmLabel="Ha, parol berish"
         tone={pickedActive ? "danger" : "primary"}
@@ -212,7 +213,7 @@ function PersonRow({ p, role, picked, onToggle, extra }: { p: Person; role: stri
 
 function IssuedCard({ creds, onClose }: { creds: NewCred[]; onClose: () => void }) {
   const text = creds.map((c) => `${c.role === "STUDENT" ? "Oʻquvchi" : "Ota-ona"}: ${c.fullName} — login: ${c.login}, parol: ${c.password}`).join("\n");
-  const csv = ["Kim;Ism;Oʻquvchi;Login;Vaqtinchalik parol"]
+  const csv = ["Kim;Ism;Oʻquvchi;Login;Parol"]
     .concat(creds.map((c) => [c.role === "STUDENT" ? "Oʻquvchi" : "Ota-ona", c.fullName, c.student ?? "", c.login, c.password].join(";")))
     .join("\n");
   const download = () => {
@@ -231,7 +232,7 @@ function IssuedCard({ creds, onClose }: { creds: NewCred[]; onClose: () => void 
       <CardHeader
         icon="key"
         title={`${creds.length} ta yangi parol`}
-        description="Bu parollar faqat hozir koʻrinadi. Yuklab oling yoki chop eting — sahifani yopgach, faqat qayta parol berish mumkin."
+        description="Bu parollar doimiy, lekin faqat hozir koʻrinadi. Yuklab oling yoki chop eting — sahifani yopgach, faqat yangi parol berish mumkin."
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" icon="download" onClick={download}>
@@ -258,7 +259,7 @@ function IssuedCard({ creds, onClose }: { creds: NewCred[]; onClose: () => void 
                 <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Ism</th>
                 <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Oʻquvchi</th>
                 <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Login</th>
-                <th className="px-5 py-2 font-label-sm text-label-sm text-on-surface-variant">Vaqtinchalik parol</th>
+                <th className="px-5 py-2 font-label-sm text-label-sm text-on-surface-variant">Parol</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant">

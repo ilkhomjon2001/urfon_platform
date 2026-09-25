@@ -1,4 +1,5 @@
 // Admin → Kirish maʼlumotlari: oʻquvchi va ota-ona login/parollarini ommaviy koʻrish va yangilash.
+// Parol DOIMIY: oila uni kiritib, almashtirishga majbur emas (xohlasa Sozlamalardan oʻzgartiradi).
 // Parollar bazada shifrlangan — eskisini koʻrsatib boʻlmaydi, faqat yangi vaqtinchalik parol beriladi.
 // Xavfsizlik: kabinetdan foydalanayotgan (parolini almashtirgan) odamning paroli faqat aniq tanlanganda yangilanadi.
 import type { FastifyInstance } from "fastify";
@@ -127,7 +128,7 @@ export default async function credentials(app: FastifyInstance) {
 
     await prisma.$transaction(async (tx) => {
       for (const m of withHash) {
-        await tx.user.update({ where: { id: m.u.id }, data: { passwordHash: m.hash, mustChangePassword: true } });
+        await tx.user.update({ where: { id: m.u.id }, data: { passwordHash: m.hash, mustChangePassword: false } });
         await tx.session.updateMany({ where: { userId: m.u.id, revokedAt: null }, data: { revokedAt: new Date() } });
       }
       await writeAudit(tx, {

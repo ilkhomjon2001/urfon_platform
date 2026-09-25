@@ -427,9 +427,9 @@ export function ParentPanel({ id, onClose, bare }: { id: string; onClose?: () =>
           <InfoRow label="Soʻnggi kirish:" icon="schedule">
             {p.lastLoginAt ? fmtRelDateTime(p.lastLoginAt) : "Hali kirmagan"}
           </InfoRow>
-          {p.mustChangePassword ? (
+          {!p.lastLoginAt ? (
             <p className="mt-1 flex items-center gap-1.5 text-body-sm text-warning">
-              <Icon name="key" size={16} /> Vaqtinchalik parol hali almashtirilmagan
+              <Icon name="key" size={16} /> Hali kabinetga kirmagan — login va parolni bering
             </p>
           ) : null}
         </div>

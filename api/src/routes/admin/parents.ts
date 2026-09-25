@@ -194,7 +194,7 @@ export default async function parents(app: FastifyInstance) {
         const clash = await tx.user.findUnique({ where: { login: body.phone } });
         if (clash) throw conflict("Bu telefon raqami bilan akkaunt allaqachon mavjud", "LOGIN_TAKEN");
         parent = await tx.user.create({
-          data: { login: body.phone, phone: body.phone, passwordHash: hash!, role: "PARENT", fullName: body.fullName!, title: body.relation, mustChangePassword: true },
+          data: { login: body.phone, phone: body.phone, passwordHash: hash!, role: "PARENT", fullName: body.fullName!, title: body.relation, mustChangePassword: false },
         });
         await writeAudit(tx, {
           ...auditCtx(req), action: "parent.create", entityType: "User", entityId: parent.id,
@@ -290,12 +290,12 @@ export default async function parents(app: FastifyInstance) {
     const pw = tempPassword();
     const hash = await hashPassword(pw);
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id }, data: { passwordHash: hash, mustChangePassword: true } });
+      await tx.user.update({ where: { id }, data: { passwordHash: hash, mustChangePassword: false } });
       await tx.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
       await writeAudit(tx, {
         ...auditCtx(req), action: "parent.reset_password", entityType: "User", entityId: id,
         summary: `${p.fullName} (${p.login}) paroli tiklandi`,
-        after: { parentId: id, mustChangePassword: true, sessionsRevoked: true },
+        after: { parentId: id, mustChangePassword: false, sessionsRevoked: true },
       });
     });
     return { userId: id, fullName: p.fullName, login: p.login, password: pw };

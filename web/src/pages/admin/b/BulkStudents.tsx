@@ -1,5 +1,5 @@
 // Admin → Oʻquvchilar → «Ommaviy qoʻshish»: Excel/Google Sheets jadvalidan koʻchirib qoʻyish yoki CSV yuklash,
-// tekshirish (dryRun), keyin qoʻshish. Natijada har bir oila uchun login va vaqtinchalik parol chiqadi —
+// tekshirish (dryRun), keyin qoʻshish. Natijada har bir oila uchun login va doimiy parol chiqadi —
 // nusxalash, CSV yuklab olish yoki chop etish mumkin (parollar keyin qayta koʻrsatilmaydi).
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -271,7 +271,7 @@ function CredentialsResult({ result }: { result: BulkResult }) {
   const lines = creds
     .filter((c) => c.password)
     .map((c) => `${c.role === "STUDENT" ? "Oʻquvchi" : `Ota-ona (${c.relation ?? ""})`}: ${c.fullName} — login: ${c.login}, parol: ${c.password}`);
-  const csv = ["Kim;Ism;Oʻquvchi;Login;Vaqtinchalik parol"]
+  const csv = ["Kim;Ism;Oʻquvchi;Login;Parol"]
     .concat(creds.map((c) => [c.role === "STUDENT" ? "Oʻquvchi" : `Ota-ona ${c.relation ?? ""}`.trim(), c.fullName, c.student, c.login, c.password ?? "(eski parol saqlandi)"].join(";")))
     .join("\n");
 
@@ -291,7 +291,7 @@ function CredentialsResult({ result }: { result: BulkResult }) {
     <div className="flex flex-col gap-4">
       <Alert tone={result.failed ? "warning" : "success"} icon={result.failed ? "warning" : "check_circle"} title={`${result.ok} ta oʻquvchi qoʻshildi`}>
         {result.failed ? `${result.failed} qatorda xato boʻldi — pastdagi roʻyxatni koʻring.` : "Barcha qatorlar muvaffaqiyatli qoʻshildi."}
-        <b> Vaqtinchalik parollar faqat hozir koʻrsatiladi</b> — nusxalab yoki yuklab oling. Keyinroq faqat «Parolni tiklash» orqali yangisini berish mumkin.
+        <b> Parollar faqat hozir koʻrsatiladi</b> — nusxalab yoki yuklab oling. Keyinroq faqat «Parolni tiklash» orqali yangisini berish mumkin.
       </Alert>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" icon="download" onClick={download}>
@@ -311,7 +311,7 @@ function CredentialsResult({ result }: { result: BulkResult }) {
               <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Kim</th>
               <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Ism</th>
               <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Login</th>
-              <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Vaqtinchalik parol</th>
+              <th className="px-3 py-2 font-label-sm text-label-sm text-on-surface-variant">Parol</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant">
@@ -330,7 +330,7 @@ function CredentialsResult({ result }: { result: BulkResult }) {
         </table>
       </div>
       {result.failed ? <RowsTable rows={result.rows.filter((r) => !r.ok)} /> : null}
-      <p className="text-body-sm text-on-surface-muted">Jami {fmtNum(creds.length)} ta akkaunt. Birinchi kirishda tizim parolni almashtirishni soʻraydi.</p>
+      <p className="text-body-sm text-on-surface-muted">Jami {fmtNum(creds.length)} ta akkaunt. Parol doimiy — oila shu parol bilan kiraveradi.</p>
     </div>
   );
 }

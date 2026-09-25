@@ -234,7 +234,7 @@ export function CopyButton({ value, label = "Nusxalash", className }: { value: s
   return <IconButton icon="content_copy" label={label} size="sm" variant="ghost" className={className} onClick={() => copyText(value)} />;
 }
 
-// ─────────── Kirish maʼlumotlari (vaqtinchalik parol faqat bir marta) ───────────
+// ─────────── Kirish maʼlumotlari (parol faqat bir marta koʻrsatiladi, keyin faqat yangisini berish mumkin) ───────────
 
 export function CredentialsDialog({
   open,
@@ -258,7 +258,7 @@ export function CredentialsDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      description={intro ?? "Vaqtinchalik parollar faqat hozir koʻrsatiladi. Birinchi kirishda parolni almashtirish soʻraladi."}
+      description={intro ?? "Parollar faqat hozir koʻrsatiladi — nusxalab, oilaga bering. Parol doimiy: kabinetga shu parol bilan kiraveradi."}
       size="md"
       footer={
         <>
@@ -285,7 +285,7 @@ export function CredentialsDialog({
             </div>
             <CredLine label="Login" value={c.login} />
             {c.password ? (
-              <CredLine label="Vaqtinchalik parol" value={c.password} mono strong />
+              <CredLine label="Parol" value={c.password} mono strong />
             ) : (
               <p className="mt-1 flex items-center gap-1.5 text-body-sm text-on-surface-variant">
                 <Icon name="link" size={16} />

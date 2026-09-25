@@ -75,7 +75,7 @@ export default function AdminParentsPage() {
             <div className="flex min-w-0 flex-col">
               <span className={`flex items-center gap-1 truncate font-label-md text-label-md font-bold ${r.id === selected ? "text-primary" : "text-on-surface"}`}>
                 <span className="truncate">{r.fullName}</span>
-                {r.mustChangePassword ? <Icon name="key" size={14} className="shrink-0 text-warning" aria-label="Vaqtinchalik parol" /> : null}
+                {!r.lastLoginAt ? <Icon name="key" size={14} className="shrink-0 text-warning" aria-label="Hali kabinetga kirmagan" /> : null}
               </span>
               <span className="whitespace-nowrap font-label-sm text-label-sm tabular-nums text-on-surface-variant">{fmtPhone(r.phone)}</span>
             </div>
@@ -159,7 +159,7 @@ export default function AdminParentsPage() {
           icon="login"
           iconTone="gold"
           loading={stats.isLoading}
-          sub={st ? `${fmtNum(st.mustChangePassword)} tasida vaqtinchalik parol` : undefined}
+          sub={st ? `${fmtNum(st.neverLoggedIn)} tasi hali kirmagan` : undefined}
         />
         <StatCard label="Bloklangan" value={fmtNum(st?.inactive)} unit="akkaunt" icon="block" iconTone="danger" loading={stats.isLoading} sub="Tizimga kira olmaydi" />
       </div>

@@ -1,4 +1,4 @@
-// Oʻquvchi va ota-onalarga vaqtinchalik parol berib, roʻyxatni CSV holida chiqaradi (chop etish yoki Excel uchun).
+// Oʻquvchi va ota-onalarga doimiy parol berib, roʻyxatni CSV holida chiqaradi (chop etish yoki Excel uchun).
 // Admin paneldagi «Kirish maʼlumotlari» sahifasi bilan bir xil ish qiladi — bu variant server tarafida ishlaydi.
 //   npm run credentials:issue -w api             → faqat hali kabinetga kirmaganlarga (xavfsiz)
 //   npm run credentials:issue -w api -- --all    → hammaga (kabinetdan foydalanayotganlar ham chiqib ketadi!)
@@ -52,7 +52,7 @@ async function main() {
     const pw = tempPassword();
     const hash = await hashPassword(pw);
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: r.userId }, data: { passwordHash: hash, mustChangePassword: true } });
+      await tx.user.update({ where: { id: r.userId }, data: { passwordHash: hash, mustChangePassword: false } });
       await tx.session.updateMany({ where: { userId: r.userId, revokedAt: null }, data: { revokedAt: new Date() } });
     });
     made.set(r.userId, pw);
@@ -67,7 +67,7 @@ async function main() {
     after: { count: made.size, all },
   });
 
-  console.log(["Kim", "Ism", "Oʻquvchi", "Guruh", "Login", "Vaqtinchalik parol"].join(";"));
+  console.log(["Kim", "Ism", "Oʻquvchi", "Guruh", "Login", "Parol"].join(";"));
   for (const r of rows) {
     const pw = made.get(r.userId);
     console.log([r.kind, r.fullName, r.student, r.group, r.login, pw ?? "(eski parol saqlandi)"].map(csvCell).join(";"));

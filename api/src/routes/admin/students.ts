@@ -679,7 +679,7 @@ export default async function students(app: FastifyInstance) {
           fullName: body.fullName,
           phone: body.phone ?? null,
           title: "Oʻquvchi",
-          mustChangePassword: true,
+          mustChangePassword: false, // parol doimiy — oila uni almashtirishga majbur emas
           studentProfile: {
             create: {
               code,
@@ -706,7 +706,7 @@ export default async function students(app: FastifyInstance) {
           parent = await tx.user.create({
             data: {
               login: p.phone, passwordHash: secret.hash, role: "PARENT", fullName: p.fullName!, phone: p.phone,
-              title: p.relation, mustChangePassword: true,
+              title: p.relation, mustChangePassword: false,
             },
           });
           created = true;
@@ -967,12 +967,12 @@ export default async function students(app: FastifyInstance) {
     const pw = tempPassword();
     const hash = await hashPassword(pw);
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id }, data: { passwordHash: hash, mustChangePassword: true } });
+      await tx.user.update({ where: { id }, data: { passwordHash: hash, mustChangePassword: false } });
       await tx.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
       await writeAudit(tx, {
         ...auditCtx(req), action: "student.reset_password", entityType: "User", entityId: id,
         summary: `${u.fullName} (${u.login}) paroli tiklandi`,
-        after: { studentId: id, mustChangePassword: true, sessionsRevoked: true },
+        after: { studentId: id, mustChangePassword: false, sessionsRevoked: true },
       });
     });
     return { userId: id, fullName: u.fullName, login: u.login, password: pw };
