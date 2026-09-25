@@ -25,6 +25,7 @@ const Admin = {
   Reports: lazy(() => import("@/pages/admin/Reports")),
   Audit: lazy(() => import("@/pages/admin/Audit")),
   Shop: lazy(() => import("@/pages/admin/Shop")),
+  Credentials: lazy(() => import("@/pages/admin/Credentials")),
 };
 
 const Teacher = {
@@ -122,6 +123,7 @@ export const router = createBrowserRouter(
           { path: "tolovlar", element: <Admin.Payments /> },
           { path: "hisobotlar", element: <Admin.Reports /> },
           { path: "dokon", element: <Admin.Shop /> },
+          { path: "kirish-malumotlari", element: <Admin.Credentials /> },
           { path: "jurnal", element: <Admin.Audit /> },
         ]),
 

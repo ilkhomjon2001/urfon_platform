@@ -7,7 +7,7 @@ import { prisma, type Tx } from "../../db.js";
 import { auditCtx, idParam, pageQuery, paged, paginate, parse, zYmd } from "../../lib/http.js";
 import { writeAudit } from "../../lib/audit.js";
 import { notifyParents } from "../../lib/notify.js";
-import { badRequest, conflict, notFound } from "../../lib/errors.js";
+import { HttpError, badRequest, conflict, notFound } from "../../lib/errors.js";
 import { hashPassword, tempPassword } from "../../lib/password.js";
 import {
   avgLabel,
@@ -634,9 +634,8 @@ export default async function students(app: FastifyInstance) {
     };
   });
 
-  // ── Yaratish: o'quvchi + ota-ona(lar) + ixtiyoriy guruh — bitta tranzaksiya ──
-  app.post("/students", async (req) => {
-    const body = parse(createBody, req.body);
+  /** O'quvchi + ota-ona(lar) + ixtiyoriy guruh — bitta tranzaksiya. Bitta va ommaviy qo'shish shu funksiyadan foydalanadi. */
+  async function createStudent(req: FastifyRequest, body: z.infer<typeof createBody>) {
     const phones = body.parents.map((p) => p.phone);
     if (new Set(phones).size !== phones.length) throw badRequest("Ota-onalar telefon raqamlari takrorlanmasin");
     if (body.phone && phones.includes(body.phone)) throw badRequest("Oʻquvchi va ota-ona telefoni bir xil boʻlmasin");
@@ -742,6 +741,146 @@ export default async function students(app: FastifyInstance) {
       return { student: { id: student.id, code, fullName: student.fullName }, credentials, enrollment };
     });
     return result;
+  }
+
+  app.post("/students", async (req) => createStudent(req, parse(createBody, req.body)));
+
+  // ── Ommaviy qoʻshish (Excel/CSV dan): avval tekshirish (dryRun), keyin yaratish ──
+  // Har bir qator alohida tranzaksiyada yaratiladi — bitta xato qator qolganlarini toʻxtatmaydi.
+  const bulkRow = z.object({
+    fullName: z.string().trim().max(120),
+    phone: z.string().trim().max(24).optional().nullable(),
+    birthDate: z.string().trim().max(20).optional().nullable(),
+    goal: z.string().trim().max(120).optional().nullable(),
+    turnstileId: z.string().trim().max(40).optional().nullable(),
+    groupCode: z.string().trim().max(40).optional().nullable(),
+    enrollmentStatus: z.string().trim().max(20).optional().nullable(),
+    parents: z
+      .array(z.object({ fullName: z.string().trim().max(120).optional().nullable(), phone: z.string().trim().max(24).optional().nullable(), relation: z.string().trim().max(20).optional().nullable() }))
+      .max(3)
+      .default([]),
+  });
+  const bulkBody = z.object({ rows: z.array(bulkRow).min(1, "Jadval boʻsh").max(300), dryRun: z.boolean().default(true) });
+
+  /** "12.03.2014" / "2014-03-12" / "2014/3/12" → "YYYY-MM-DD" */
+  function normalizeYmd(v?: string | null): string | null {
+    const t = (v ?? "").trim();
+    if (!t) return null;
+    const dmy = t.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+    const ymd = t.match(/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/);
+    if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, "0")}-${ymd[3].padStart(2, "0")}`;
+    return t;
+  }
+  const RELATIONS: Record<string, "Ota" | "Ona" | "Vasiy"> = { ota: "Ota", ona: "Ona", vasiy: "Vasiy", father: "Ota", mother: "Ona" };
+  const WAITING_WORDS = ["navbat", "kutish", "waiting", "kutmoqda"];
+
+  app.post("/students/bulk", async (req) => {
+    const body = parse(bulkBody, req.body);
+    const groups = await prisma.group.findMany({ where: { status: { not: "FINISHED" } }, select: { id: true, code: true, name: true } });
+    const groupByKey = new Map<string, { id: string; code: string; name: string }>();
+    for (const g of groups) {
+      groupByKey.set(g.code.toLowerCase(), g);
+      groupByKey.set(g.name.toLowerCase(), g);
+    }
+
+    // 1) Har bir qatorni tekshiramiz (zod + guruh + fayl ichidagi takror)
+    type Prepared = { n: number; fullName: string; ok: boolean; error: string | null; warning: string | null; input?: z.infer<typeof createBody>; groupLabel: string | null };
+    const prepared: Prepared[] = [];
+    const seenParentPhones = new Set<string>();
+    const seenNames = new Set<string>();
+
+    body.rows.forEach((raw, i) => {
+      const n = i + 1;
+      const fullName = raw.fullName.trim();
+      const parents = raw.parents.filter((p) => (p.phone ?? "").trim());
+      const fail = (error: string) => prepared.push({ n, fullName, ok: false, error, warning: null, groupLabel: null });
+      if (!fullName) return fail("Oʻquvchi ismi boʻsh");
+      if (!parents.length) return fail("Kamida bitta ota-ona telefoni kerak");
+
+      let group: { id: string; code: string; name: string } | undefined;
+      const gKey = (raw.groupCode ?? "").trim().toLowerCase();
+      if (gKey) {
+        group = groupByKey.get(gKey);
+        if (!group) return fail(`Guruh topilmadi: ${raw.groupCode}`);
+      }
+      const parsed = createBody.safeParse({
+        fullName,
+        phone: (raw.phone ?? "").trim() || null,
+        birthDate: normalizeYmd(raw.birthDate),
+        goal: (raw.goal ?? "").trim() || null,
+        turnstileId: (raw.turnstileId ?? "").trim() || null,
+        parents: parents.map((p) => ({
+          fullName: (p.fullName ?? "").trim() || undefined,
+          phone: (p.phone ?? "").trim(),
+          relation: RELATIONS[(p.relation ?? "").trim().toLowerCase()] ?? "Ota",
+        })),
+        groupId: group?.id ?? null,
+        enrollmentStatus: WAITING_WORDS.some((w) => (raw.enrollmentStatus ?? "").toLowerCase().includes(w)) ? "WAITING" : "ACTIVE",
+        allowDuplicate: true, // oʻxshash ism ogohlantirish sifatida koʻrsatiladi, bloklamaydi
+      });
+      if (!parsed.success) return fail(parsed.error.issues.map((x) => x.message).join("; "));
+
+      const phones = parsed.data.parents.map((p) => p.phone);
+      if (new Set(phones).size !== phones.length) return fail("Bir qatorda bir xil ota-ona telefoni ikki marta");
+      const dupInFile = phones.find((ph) => seenParentPhones.has(ph));
+      let warning: string | null = null;
+      if (dupInFile) warning = `Bu ota-ona telefoni jadvalda yana bor (${dupInFile}) — aka-uka/opa-singil boʻlsa toʻgʻri`;
+      if (seenNames.has(fullName.toLowerCase())) warning = "Jadvalda shu ismli oʻquvchi yana bor";
+      for (const ph of phones) seenParentPhones.add(ph);
+      seenNames.add(fullName.toLowerCase());
+
+      prepared.push({ n, fullName, ok: true, error: null, warning, input: parsed.data, groupLabel: group ? `${group.code} · ${group.name}` : null });
+    });
+
+    // 2) Bazadagi dublikatlar (faqat ogohlantirish; aniq dublikat — xato)
+    for (const row of prepared) {
+      if (!row.ok || !row.input) continue;
+      const dups = await findDuplicates(prisma, {
+        fullName: row.input.fullName,
+        phone: row.input.phone ?? undefined,
+        parentPhones: row.input.parents.map((p) => p.phone),
+      });
+      const exact = dups.find((d) => d.blocking);
+      if (exact) {
+        row.ok = false;
+        row.error = `Allaqachon roʻyxatda: ${exact.fullName} (#${exact.code})`;
+      } else if (dups.length) {
+        row.warning = `Bazada oʻxshash oʻquvchi bor: ${dups.map((d) => `${d.fullName} (#${d.code})`).join(", ")}`;
+      }
+    }
+
+    const okRows = prepared.filter((r) => r.ok);
+    const result = prepared.map((r) => ({ n: r.n, fullName: r.fullName, ok: r.ok, error: r.error, warning: r.warning, group: r.groupLabel }));
+    if (body.dryRun) {
+      return { dryRun: true, total: prepared.length, ok: okRows.length, failed: prepared.length - okRows.length, rows: result, credentials: [] };
+    }
+
+    // 3) Yaratish — qatorma-qator
+    const credentials: unknown[] = [];
+    let created = 0;
+    for (const row of prepared) {
+      if (!row.ok || !row.input) continue;
+      try {
+        const res = await createStudent(req, row.input);
+        created++;
+        credentials.push(...res.credentials.map((c) => ({ ...c, student: res.student.fullName, code: res.student.code })));
+      } catch (e) {
+        row.ok = false;
+        row.error = e instanceof HttpError ? e.message : "Saqlashda xato";
+        const out = result.find((x) => x.n === row.n);
+        if (out) {
+          out.ok = false;
+          out.error = row.error;
+        }
+      }
+    }
+    await writeAudit(prisma, {
+      ...auditCtx(req), action: "student.bulk_create", entityType: "Student", entityId: "bulk",
+      summary: `Ommaviy qoʻshish: ${created} ta oʻquvchi yaratildi (jadvalda ${prepared.length} qator)`,
+      after: { created, total: prepared.length, failed: prepared.length - created },
+    });
+    return { dryRun: false, total: prepared.length, ok: created, failed: prepared.length - created, rows: result, credentials };
   });
 
   // ── Tahrirlash ──

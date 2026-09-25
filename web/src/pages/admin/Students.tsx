@@ -1,4 +1,5 @@
 // Admin → Oʻquvchilar va ota-onalar boshqaruvi (mockup: urfon_admin_o_quvchilar_va_ota_onalar_boshqaruvi).
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -24,6 +25,7 @@ import { fmtNum, fmtPercent, fmtPhone, fmtTime } from "@/lib/format";
 import { useDebouncedValue, useFlagParam, useMediaQuery, useSearchParamState } from "@/lib/hooks";
 import { useApiQuery } from "@/lib/query";
 import type { Paginated } from "@/lib/types";
+import { BulkStudentsDialog } from "./b/BulkStudents";
 import { CreateStudentDialog } from "./b/StudentDialogs";
 import { StudentPanel, pctTone } from "./b/StudentPanel";
 import { CredentialsDialog, ExportButton, relationOf, StudentStatusBadge, TelegramDot, useFormOptions } from "./b/shared";
@@ -42,6 +44,8 @@ export default function AdminStudentsPage() {
   const [pageStr, setPageStr] = useSearchParamState("page", "1");
   const [selected, setSelected] = useSearchParamState("id");
   const [createOpen, setCreateOpen] = useFlagParam("new");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const qc = useQueryClient();
   const [creds, setCreds] = useState<Credential[] | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const page = Math.max(1, Number(pageStr) || 1);
@@ -195,6 +199,9 @@ export default function AdminStudentsPage() {
               filename="oquvchilar.csv"
               variant="secondary"
             />
+            <Button variant="outline" icon="group_add" onClick={() => setBulkOpen(true)}>
+              Ommaviy qoʻshish
+            </Button>
             <Button icon="person_add" onClick={() => setCreateOpen(true)}>
               Yangi oʻquvchi qoʻshish
             </Button>
@@ -407,6 +414,7 @@ export default function AdminStudentsPage() {
       ) : null}
 
       <CreateStudentDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={onCreated} />
+      <BulkStudentsDialog open={bulkOpen} onOpenChange={setBulkOpen} onDone={() => void qc.invalidateQueries({ queryKey: ["admin", "students"] })} />
       <CredentialsDialog
         open={!!creds}
         onOpenChange={(o) => !o && setCreds(null)}

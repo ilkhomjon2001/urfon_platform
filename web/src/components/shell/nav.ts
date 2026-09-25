@@ -55,6 +55,7 @@ export const NAV: Record<Role, RoleNav> = {
       { key: "teachers", label: "Ustozlar", icon: "person_apron", to: "/admin/ustozlar", badgeTone: "muted", hint: "Ustozlar roʻyxati, yuklama va kabinet kirish maʼlumotlari" },
       { key: "students", label: "Oʻquvchilar", icon: "school", to: "/admin/oquvchilar", badgeTone: "muted", hint: "Oʻquvchini qabul qilish, guruhga qoʻshish, chiqarish" },
       { key: "parents", label: "Ota-onalar", icon: "family_restroom", to: "/admin/ota-onalar", hint: "Ota-ona kabinetlari va Telegram hisobotga ulanish" },
+      { key: "credentials", label: "Kirish maʼlumotlari", short: "Loginlar", icon: "key", to: "/admin/kirish-malumotlari", hint: "Oʻquvchi va ota-ona loginlari; ommaviy parol berish va roʻyxatni chop etish" },
       { key: "curriculum", section: "Oʻquv dasturi", label: "Mavzular bazasi", short: "Mavzular", icon: "menu_book", to: "/admin/mavzular", hint: "Levellar va unitlar: sillabus hamda darsma-dars reja" },
       { key: "plans", label: "Dars rejalari", short: "Rejalar", icon: "auto_stories", to: "/admin/dars-rejalari", hint: "Har bir darsning toʻliq rejasi: bosqichlar, lugʻat, uy vazifasi — chop etish mumkin" },
       { key: "materials", label: "Resurslar bazasi", short: "Resurslar", icon: "folder_open", to: "/admin/resurslar", hint: "Darslik PDF, audio va boshqa fayllar — ustozlarga koʻrinadi" },
