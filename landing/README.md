@@ -11,6 +11,8 @@ Platformadan (app.urfon-edu.uz) mustaqil — bu yerdagi fayllar shu papkaning nu
 | `urfon_landing.html` | Butun sayt — bitta HTML (CSS ichida). `<head>` da SEO bloki: canonical, Open Graph, JSON-LD. |
 | `server.js` | Node (bogʻliqliksiz): sahifa, `/api/lead`, `robots.txt`, `sitemap.xml`, `/static/*`, kesh va 404. |
 | `static/` | Ikonkalar, `og-image.jpg`, `site.webmanifest`, Manrope shrifti (oʻz serverimizda). |
+| `build.mjs` | Ichki sahifalarni yigʻadi: `site/<slug>/index.html`, `static/site.css` va `static/sitemap.xml`. Matn shu faylning ichida. |
+| `site/` | Yigʻilgan ichki sahifalar (qoʻlda tahrirlanmaydi — `build.mjs` qayta yozadi). |
 | `deploy.sh` | Serverga birinchi marta oʻrnatish (Node, foydalanuvchi, systemd). Odatda kerak emas. |
 
 ## SEO qoidalari
@@ -23,6 +25,14 @@ Platformadan (app.urfon-edu.uz) mustaqil — bu yerdagi fayllar shu papkaning nu
 - Shrift Google Fonts dan emas, `/static/fonts/` dan yuklanadi (tashqi soʻrov yoʻq, sahifa tezroq ochiladi).
 - Kabinet (app.urfon-edu.uz) `noindex` — `web/public/robots.txt` va `web/index.html` dagi meta orqali.
 
+## Sahifalar
+
+`/` (bosh), `/8-12-yosh/`, `/13-16-yosh/`, `/dastur/`, `/narx/`, `/ustozlar/`, `/aloqa/`.
+
+Ichki sahifa matnini oʻzgartirish: `build.mjs` ichidagi `pages` massivini tahrirlab, `node build.mjs` ni ishga tushiring,
+keyin `site/` va `static/` ni serverga yuboring. Narx sahifasida aniq summa **yozilmaydi** (egasi shunday qaror qilgan),
+ustozlar sahifasida esa ism va foto **berilmaydi**.
+
 ## Yangilash
 
 ```bash
@@ -30,7 +40,7 @@ TS=$(date +%Y%m%d-%H%M%S)
 ssh -i ~/.ssh/tarbion_server root@169.58.130.201 \
   "cd /opt/urfon && cp urfon_landing.html urfon_landing.html.bak-$TS && cp server.js server.js.bak-$TS"
 scp -i ~/.ssh/tarbion_server server.js urfon_landing.html root@169.58.130.201:/opt/urfon/
-scp -i ~/.ssh/tarbion_server -r static root@169.58.130.201:/opt/urfon/
+scp -i ~/.ssh/tarbion_server -r static site root@169.58.130.201:/opt/urfon/
 ssh -i ~/.ssh/tarbion_server root@169.58.130.201 \
   "chown -R urfon:urfon /opt/urfon/server.js /opt/urfon/urfon_landing.html /opt/urfon/static && systemctl restart urfon-landing"
 ```

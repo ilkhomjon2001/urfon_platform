@@ -396,6 +396,11 @@ body{padding-bottom:76px}
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
   .reveal{opacity:1;transform:none}
 }
+
+/* Footer menyusi */
+.foot-nav{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-bottom:10px}
+.foot-nav a{color:var(--text-muted);text-decoration:none;font-size:14px}
+.foot-nav a:hover{color:var(--primary)}
 </style>
 </head>
 <body>
@@ -404,11 +409,12 @@ body{padding-bottom:76px}
   <div class="container nav-inner">
     <a class="logo" href="#top">URFON <small>oʻquv markazi</small></a>
     <ul class="nav-links">
-      <li><a href="#nega-biz">Nega biz</a></li>
-      <li><a href="#bosqichlar">Bosqichlar</a></li>
-      <li><a href="#qadamlar">Qanday boshlash</a></li>
-      <li><a href="#faq">Savollar</a></li>
-      <li><a href="#aloqa">Aloqa</a></li>
+      <li><a href="/8-12-yosh/">8–12 yosh</a></li>
+      <li><a href="/13-16-yosh/">13–16 yosh</a></li>
+      <li><a href="/dastur/">Dastur</a></li>
+      <li><a href="/narx/">Narx</a></li>
+      <li><a href="/ustozlar/">Ustozlar</a></li>
+      <li><a href="/aloqa/">Aloqa</a></li>
     </ul>
     <div class="nav-actions">
       <a class="btn btn-secondary nav-login" href="https://app.urfon-edu.uz/">Kabinetga kirish</a>
@@ -529,6 +535,7 @@ body{padding-bottom:76px}
     <div class="section-head center reveal">
       <span class="eyebrow">6 bosqichli dastur</span>
       <h2 id="lvl-h">Oddiy soʻzlardan — erkin suhbatgacha</h2>
+      <p class="dastur-havola" style="margin-top:10px"><a href="/dastur/" style="color:var(--primary);font-weight:700;text-decoration:none">Toʻliq dastur, darsliklar va baholash tartibi →</a></p>
       <p class="sub">Har bir level 2,5–3 oy (10–12 hafta) davom etadi. Bola oʻz darajasidan boshlaydi va bosqichma-bosqich oʻsadi.</p>
     </div>
     <div class="levels">
@@ -637,7 +644,15 @@ body{padding-bottom:76px}
 </main>
 
 <footer>
-  <div class="container foot">
+  <div class="container foot" style="flex-direction:column;text-align:center">
+    <nav class="foot-nav" aria-label="Sayt boʻlimlari">
+      <a href="/8-12-yosh/">8–12 yosh uchun kurs</a>
+      <a href="/13-16-yosh/">13–16 yosh uchun kurs</a>
+      <a href="/dastur/">Oʻquv dasturi</a>
+      <a href="/narx/">Narx va toʻlov</a>
+      <a href="/ustozlar/">Ustozlarimiz</a>
+      <a href="/aloqa/">Manzil va aloqa</a>
+    </nav>
     <div><b style="color:var(--text)">URFON oʻquv markazi</b> · 8–16 yoshli bolalar va oʻsmirlar uchun ingliz tili</div>
     <div>Kushan shaharchasi, 12-maktab yonida · <a href="tel:+998973757375">+998 97 375 73 75</a></div>
   </div>

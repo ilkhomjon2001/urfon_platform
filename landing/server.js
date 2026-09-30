@@ -101,6 +101,7 @@ const MIME = {
   ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml",
   ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".json": "application/json",
   ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
   ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml; charset=utf-8",
 };
 const staticCache = new Map(); // yo'l -> { body, type, etag }
@@ -133,11 +134,33 @@ const ROBOTS = [
   "",
 ].join("\n");
 
-const SITEMAP =
-  '<?xml version="1.0" encoding="UTF-8"?>\n' +
-  '<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">\n'.replace("sitemap.org", "sitemaps.org") +
-  `  <url>\n    <loc>${SITE}/</loc>\n    <lastmod>${lastmodYmd}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n` +
-  "</urlset>\n";
+// sitemap.xml — `node build.mjs` yasab beradi (barcha sahifalar). Fayl yo'q bo'lsa — faqat bosh sahifa.
+const SITEMAP = (() => {
+  try {
+    return readFileSync(join(STATIC_DIR, "sitemap.xml"), "utf8");
+  } catch {
+    return (
+      '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      `  <url>\n    <loc>${SITE}/</loc>\n    <lastmod>${lastmodYmd}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n` +
+      "</urlset>\n"
+    );
+  }
+})();
+
+/* ---------- Ichki sahifalar: site/<slug>/index.html ---------- */
+const SITE_DIR = join(DIR, "site");
+const pageCache = new Map(); // slug -> { body, etag }
+
+function readPage(slug) {
+  if (!/^[a-z0-9-]{2,40}$/.test(slug)) return null;
+  if (pageCache.has(slug)) return pageCache.get(slug);
+  const file = join(SITE_DIR, slug, "index.html");
+  if (!existsSync(file)) return null;
+  const body = readFileSync(file);
+  const item = { body, etag: `"${createHash("sha1").update(body).digest("hex").slice(0, 16)}"` };
+  pageCache.set(slug, item);
+  return item;
+}
 
 /** Har bir javobga qo'yiladigan umumiy sarlavhalar. */
 const BASE_HEADERS = {
@@ -180,6 +203,21 @@ const server = createServer(async (req, res) => {
       etag: htmlEtag,
       "last-modified": htmlModified,
     }, html);
+  }
+
+  // Ichki sahifalar: /8-12-yosh/, /dastur/ va hokazo
+  if (isGet && /^\/[a-z0-9-]{2,40}\/?$/.test(url) && url !== "/") {
+    const slug = url.replace(/\//g, "");
+    const page = readPage(slug);
+    if (page) {
+      if (!url.endsWith("/")) return send(req, res, 301, { location: `/${slug}/` }); // yagona manzil
+      if (req.headers["if-none-match"] === page.etag) return send(req, res, 304, { etag: page.etag });
+      return send(req, res, 200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=600, must-revalidate",
+        etag: page.etag,
+      }, page.body);
+    }
   }
 
   if (isGet && url === "/robots.txt") {
