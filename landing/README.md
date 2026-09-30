@@ -17,7 +17,7 @@ Platformadan (app.urfon-edu.uz) mustaqil — bu yerdagi fayllar shu papkaning nu
 
 ## SEO qoidalari
 
-- Sayt **bitta sahifa**: `sitemap.xml` da ham bitta `loc` — `https://urfon-edu.uz/`.
+- `sitemap.xml` ni `build.mjs` yasaydi — bosh sahifa + 6 ta ichki sahifa.
 - `<head>` dagi SEO bloki `<!-- SEO: boshi -->` va `<!-- SEO: oxiri -->` orasida. JSON-LD ichida
   markaz (EducationalOrganization + LocalBusiness), kurs (Course), sayt (WebSite) va savol-javoblar (FAQPage).
 - **FAQ JSON-LD sahifadagi matn bilan bir xil boʻlishi shart** — savol yoki javob oʻzgarsa, JSON-LD ham yangilanadi,
