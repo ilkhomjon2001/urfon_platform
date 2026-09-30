@@ -100,6 +100,7 @@ const STATIC_DIR = join(DIR, "static");
 const MIME = {
   ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml",
   ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".json": "application/json",
+  ".html": "text/html; charset=utf-8",
   ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml; charset=utf-8",
 };
 const staticCache = new Map(); // yo'l -> { body, type, etag }
@@ -200,6 +201,14 @@ const server = createServer(async (req, res) => {
         "cache-control": url === "/favicon.ico" ? "public, max-age=604800" : "public, max-age=31536000, immutable",
         etag: item.etag,
       }, item.body);
+    }
+  }
+
+  // Qidiruv tizimlari tasdiq fayllari (Google Search Console, Yandex Webmaster) — static/root/ dan ildizga beriladi
+  if (isGet && /^\/[A-Za-z0-9._-]+\.(html|txt|xml)$/.test(url)) {
+    const item = readStatic("root/" + url.slice(1));
+    if (item) {
+      return send(req, res, 200, { "content-type": item.type, "cache-control": "no-cache", "x-robots-tag": "noindex" }, item.body);
     }
   }
 
