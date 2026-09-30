@@ -1,0 +1,4 @@
+# app.urfon-edu.uz — yopiq kabinet, qidiruv tizimlariga koʻrsatilmaydi.
+# Markaz sayti: https://urfon-edu.uz
+User-agent: *
+Disallow: /
