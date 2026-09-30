@@ -3,7 +3,7 @@
 // Ishga tushirish: node server.js
 
 import { createServer } from "node:http";
-import { readFileSync, appendFileSync, existsSync, statSync } from "node:fs";
+import { readFileSync, appendFileSync, existsSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -184,8 +184,25 @@ const NOT_FOUND_HTML = `<!doctype html><html lang="uz"><head><meta charset="utf-
 a{color:#1E4FC2}main{text-align:center;padding:24px}h1{font-size:64px;margin:0;color:#1E4FC2}p{margin:8px 0 20px}</style>
 </head><body><main><h1>404</h1><p>Bunday sahifa yoʻq.</p><a href="/">Bosh sahifaga qaytish</a></main></body></html>`;
 
+/* ---------- Qidiruv robotlari jurnali ---------- */
+// Googlebot/Yandex/Bing qachon, qaysi sahifaga kelgani — SEO ni kuzatish uchun.
+// Faqat robotlar yoziladi (odam tashriflari emas), fayl 2 MB dan oshsa boshidan yoziladi.
+const CRAWLER_LOG = join(DIR, "crawlers.log");
+const CRAWLER_RE = /(googlebot|google-inspectiontool|bingbot|yandex(bot|webmaster)|duckduckbot|applebot|facebookexternalhit|telegrambot|twitterbot|ahrefsbot|semrushbot)/i;
+
+function logCrawler(req, url) {
+  const ua = req.headers["user-agent"] || "";
+  const m = ua.match(CRAWLER_RE);
+  if (!m) return;
+  try {
+    if (existsSync(CRAWLER_LOG) && statSync(CRAWLER_LOG).size > 2_000_000) writeFileSync(CRAWLER_LOG, "");
+    appendFileSync(CRAWLER_LOG, JSON.stringify({ at: nowLocal(), bot: m[1].toLowerCase(), url, method: req.method, ua: ua.slice(0, 120) }) + "\n");
+  } catch { /* jurnal yozilmasa ham sayt ishlayveradi */ }
+}
+
 const server = createServer(async (req, res) => {
   const url = req.url.split("?")[0];
+  logCrawler(req, url);
 
   const isGet = req.method === "GET" || req.method === "HEAD"; // HEAD — qidiruv robotlari uchun
 

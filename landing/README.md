@@ -13,6 +13,8 @@ Platformadan (app.urfon-edu.uz) mustaqil — bu yerdagi fayllar shu papkaning nu
 | `static/` | Ikonkalar, `og-image.jpg`, `site.webmanifest`, Manrope shrifti (oʻz serverimizda). |
 | `build.mjs` | Ichki sahifalarni yigʻadi: `site/<slug>/index.html`, `static/site.css` va `static/sitemap.xml`. Matn shu faylning ichida. |
 | `site/` | Yigʻilgan ichki sahifalar (qoʻlda tahrirlanmaydi — `build.mjs` qayta yozadi). |
+| `indexnow.mjs` | Bing va Yandex ga yangilanishni darhol xabar qiladi: `node indexnow.mjs` (sitemap dagi hammasi) yoki `node indexnow.mjs /narx/`. Kalit `.indexnow-key` da, ochiq nusxasi `static/root/<kalit>.txt`. |
+| `crawlers.log` | Qidiruv robotlari tashrifi (serverda yaratiladi): `tail -20 /opt/urfon/crawlers.log`. Googlebot kelgan-kelmaganini shundan koʻrasiz. |
 | `deploy.sh` | Serverga birinchi marta oʻrnatish (Node, foydalanuvchi, systemd). Odatda kerak emas. |
 
 ## SEO qoidalari

@@ -9,3 +9,4 @@ uploads/
 deploy/backups/
 *.log
 .DS_Store
+landing/crawlers.log
