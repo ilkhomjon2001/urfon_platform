@@ -96,7 +96,9 @@ async function dailyContent(studentId: string, now: Date) {
       : (a.status === "PRESENT" || a.status === "LATE") && a.arrivedAt
         ? `${ATTENDANCE_LABEL[a.status]}, ${fmtTime(a.arrivedAt)}`
         : ATTENDANCE_LABEL[a.status];
+    // Ustoz yozgan dars mavzusi ham ota-onaga boradi (matematikada mavzu bazasi yoʻq — nom qoʻlda yoziladi)
     lines.push(`Dars: ${l.group.name} (${fmtTime(l.startsAt)}) — ${state}.`);
+    if (l.title) lines.push(`Mavzu: “${l.title}”.`);
   }
   if (grades.length) {
     lines.push(`Baholar: ${grades.map((g) => `${fmtGrade(g.value)} (${gradeLabel(g.value)}) — ${g.title ?? GRADE_KIND[g.kind]}`).join("; ")}.`);

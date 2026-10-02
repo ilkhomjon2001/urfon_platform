@@ -60,15 +60,17 @@ export default function TeacherLessonConductPage() {
   const [finishOpen, setFinishOpen] = useState(false);
 
   // Xulosa (lokal qoralama — fon yangilanishi yozilayotgan matnni o'chirmaydi)
+  const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [hwNote, setHwNote] = useState("");
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
     if (d && !dirty) {
+      setTitle(d.lesson.title ?? "");
       setSummary(d.lesson.summary ?? "");
       setHwNote(d.lesson.homeworkNote ?? "");
     }
-  }, [d?.lesson.id, d?.lesson.summary, d?.lesson.homeworkNote, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [d?.lesson.id, d?.lesson.title, d?.lesson.summary, d?.lesson.homeworkNote, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setDirty(false), [lessonId]);
 
   const refreshSide = () => lessonSideKeys.forEach((k) => qc.invalidateQueries({ queryKey: k }));
@@ -169,8 +171,13 @@ export default function TeacherLessonConductPage() {
   });
 
   const saveSummary = useApiMutation(
-    () => api.patch(`/teacher/lessons/${lessonId}`, { summary: summary.trim() || null, homeworkNote: hwNote.trim() || null }),
-    { invalidate: [key], success: "Dars xulosasi saqlandi", onSuccess: () => setDirty(false) },
+    () =>
+      api.patch(`/teacher/lessons/${lessonId}`, {
+        summary: summary.trim() || null,
+        homeworkNote: hwNote.trim() || null,
+        ...(title.trim() ? { title: title.trim() } : {}),
+      }),
+    { invalidate: [key, ...lessonSideKeys], success: "Dars maʼlumoti saqlandi", onSuccess: () => setDirty(false) },
   );
 
   if (q.isLoading) return <LessonSkeleton />;
@@ -333,8 +340,19 @@ export default function TeacherLessonConductPage() {
 
         {/* ── Dars xulosasi */}
         <Card className="min-w-0 lg:col-span-4 lg:col-start-9 lg:row-start-2">
-          <CardHeader title="Dars xulosasi" description="Ota-onalarga dars tafsilotida koʻrinadi" icon="summarize" />
+          <CardHeader title="Dars mavzusi va xulosasi" description="Ikkalasi ham ota-onaga boradi: mavzu kunlik hisobotda, xulosa dars tafsilotida" icon="summarize" />
           <CardContent className="flex flex-col gap-3">
+            <Input
+              value={title}
+              maxLength={200}
+              disabled={l.status === "CANCELLED"}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setDirty(true);
+              }}
+              placeholder="Dars mavzusi — masalan: Kasrlarni qoʻshish"
+              aria-label="Dars mavzusi"
+            />
             <Textarea
               rows={4}
               value={summary}
