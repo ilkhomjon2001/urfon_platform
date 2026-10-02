@@ -7,7 +7,7 @@ import { useDebouncedValue } from "@/lib/hooks";
 import { useApiMutation, useApiQuery } from "@/lib/query";
 import type { Paginated } from "@/lib/types";
 import { DayPicker, isTime, keys, MOBILE_FULL_CLASS, RoomPickList, TeacherPickList, useLookups } from "./shared";
-import { SUBJECT_LABEL, type Subject } from "./types";
+import { SUBJECT_ICON, SUBJECT_LABEL, type Subject } from "./types";
 import { toast } from "sonner";
 import type { AdminStudentItem, GroupDetail, GroupRow } from "./types";
 
@@ -25,11 +25,14 @@ interface FormState {
   startDate: string;
   totalLessons: string;
   status: "ENROLLING" | "ACTIVE";
+  /** fan: bosqich tanlansa undan olinadi, «Levelsiz» guruhda qoʻlda tanlanadi */
+  subject: Subject;
 }
 
 const empty = (): FormState => ({
   name: "",
   levelId: "",
+  subject: "ENGLISH",
   ageGroup: "TEENS",
   roomId: null,
   teacherId: null,
@@ -46,6 +49,7 @@ const empty = (): FormState => ({
 const fromGroup = (g: GroupRow): FormState => ({
   name: g.name,
   levelId: g.level?.id ?? "",
+  subject: (g.level?.subject ?? g.subject ?? "ENGLISH") as Subject,
   ageGroup: g.ageGroup ?? "TEENS",
   roomId: g.room?.id ?? null,
   teacherId: g.teacher?.id ?? null,
@@ -147,6 +151,7 @@ export function GroupFormDialog({
     const body = {
       name: f.name.trim(),
       levelId: f.levelId || null,
+      subject: f.subject,
       ageGroup: f.ageGroup,
       roomId: f.roomId,
       days: f.days,
@@ -201,7 +206,6 @@ export function GroupFormDialog({
 
   const levels = lookups.data?.levels ?? [];
   // markazda bir nechta fan boʻlsa, level nomi oldida fan koʻrsatiladi
-  const subjectCount = new Set(levels.map((l) => l.subject ?? "ENGLISH")).size;
 
   return (
     <Dialog
@@ -233,6 +237,29 @@ export function GroupFormDialog({
         <Field label="Guruh nomi" required error={err("name")} hint="Oʻquvchilar kabineti va toʻlov kvitansiyalarida koʻrinadi">
           <Input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Masalan: IELTS Foundation #5" maxLength={80} autoFocus={!editing} />
         </Field>
+        {(
+          <Field label="Fan" required hint="Guruh qaysi yoʻnalishda — hisobotlar va filtrlar shunga qarab ishlaydi">
+            <Tabs
+              value={f.subject}
+              onValueChange={(v) => {
+                const next = v as Subject;
+                set("subject", next);
+                // tanlangan fanga tegishli boʻlmagan bosqich tozalanadi
+                const cur = levels.find((l) => l.id === f.levelId);
+                if (cur && (cur.subject ?? "ENGLISH") !== next) set("levelId", "");
+              }}
+              variant="segmented"
+            >
+              <TabsList className="w-full">
+                {(Object.keys(SUBJECT_LABEL) as Subject[]).map((sj) => (
+                  <TabsTrigger key={sj} value={sj} className="flex-1" icon={SUBJECT_ICON[sj]}>
+                    {SUBJECT_LABEL[sj]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </Field>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Bosqich (Level)">
             {lookups.isLoading ? (
@@ -242,7 +269,7 @@ export function GroupFormDialog({
                 value={f.levelId}
                 onChange={(e) => set("levelId", e.target.value)}
                 placeholder="Levelsiz"
-                options={levels.map((l) => ({ value: l.id, label: `${subjectCount > 1 ? `${SUBJECT_LABEL[(l.subject ?? "ENGLISH") as Subject]} · ` : ""}${l.label ?? l.name}` }))}
+                options={levels.filter((l) => (l.subject ?? "ENGLISH") === f.subject).map((l) => ({ value: l.id, label: l.label ?? l.name }))}
               />
             )}
           </Field>

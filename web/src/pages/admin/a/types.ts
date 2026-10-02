@@ -38,6 +38,8 @@ export interface GroupRow {
   name: string;
   status: GroupStatus;
   level: LevelRef | null;
+  /** guruh fani (bosqich tanlangan boʻlsa — bosqichniki) */
+  subject?: Subject;
   /** 13–16 (TEENS) yoki 8–12 (KIDS) */
   ageGroup: "TEENS" | "KIDS";
   teacher: TeacherRef | null;

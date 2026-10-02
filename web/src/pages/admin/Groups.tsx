@@ -386,7 +386,7 @@ export default function AdminGroupsPage() {
 
   // markazda nechta fan bor — bittadan koʻp boʻlsa filtr chiqadi
 
-  const subjects = [...new Set(levels.map((l) => l.subject ?? "ENGLISH"))] as Subject[];
+  const subjects = Object.keys(SUBJECT_LABEL) as Subject[];
   const teachers = lookups.data?.teachers ?? [];
   const rooms = lookups.data?.rooms ?? [];
   const activePct = summary && summary.total ? Math.round((summary.active / summary.total) * 100) : 0;
@@ -507,7 +507,7 @@ export default function AdminGroupsPage() {
           wrapperClassName="flex-1"
         />
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:flex-nowrap">
-          {subjects.length > 1 ? (
+          {(
             <Select
               aria-label="Fan"
               value={subject}
@@ -516,7 +516,7 @@ export default function AdminGroupsPage() {
               options={subjects.map((sj) => ({ value: sj, label: SUBJECT_LABEL[sj] }))}
               wrapperClassName="sm:w-40"
             />
-          ) : null}
+          )}
           <Select
             aria-label="Level"
             value={levelId}

@@ -233,6 +233,7 @@ model Group {
   code         String            @unique // "GR-03"
   name         String // "IELTS Foundation #3"
   levelId      String?
+  subject      Subject           @default(ENGLISH) // fan; bosqich tanlansa — oʻsha bosqichning fani
   ageGroup     AgeGroup          @default(TEENS) // 13–16 yoki 8–12: level ichidagi qaysi dars rejasi ishlatiladi
   teacherId    String? // null = ustoz biriktirilmagan
   roomId       String?
