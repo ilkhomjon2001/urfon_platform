@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { fmtDateShort, fmtNum, fmtPercent, fmtPhone, fmtRelDateTime, fmtTime, fmtTimeRange, WEEKDAYS_SHORT } from "@/lib/format";
 import { useApiMutation, useApiQuery } from "@/lib/query";
 import { GroupStatusBadge, InfoItem, keys, MOBILE_FULL_CLASS, Sheet } from "./shared";
-import type { TeacherDetail, TeacherRow } from "./types";
+import { SUBJECT_ICON, SUBJECT_LABEL, type Subject, type TeacherDetail, type TeacherRow } from "./types";
 
 export const MAX_WEEKLY_HOURS = 24; // yuklama chizig'i uchun me'yor (haftasiga)
 
@@ -221,6 +221,8 @@ interface TeacherForm {
   fullName: string;
   phone: string;
   title: string;
+  /** qaysi fanlarda dars beradi */
+  subjects: Subject[];
   specialization: string;
   certificates: string;
   experienceYears: string;
@@ -229,7 +231,7 @@ interface TeacherForm {
 }
 
 const emptyForm: TeacherForm = {
-  fullName: "", phone: "+998 ", title: "Ustoz", specialization: "", certificates: "", experienceYears: "", responseTime: "", bio: "",
+  fullName: "", phone: "+998 ", title: "Ustoz", subjects: ["ENGLISH"], specialization: "", certificates: "", experienceYears: "", responseTime: "", bio: "",
 };
 
 /** "+998 90 123-45-67" / "901234567" → "+998901234567" yoki null */
@@ -239,7 +241,7 @@ export function normalizePhone(raw: string) {
   return /^998\d{9}$/.test(full) ? `+${full}` : null;
 }
 
-type EditSource = Pick<TeacherDetail, "id" | "fullName" | "phone" | "title" | "profile"> | null;
+type EditSource = Pick<TeacherDetail, "id" | "fullName" | "phone" | "title" | "profile" | "subjects"> | null;
 
 export function TeacherFormDialog({
   open,
@@ -268,6 +270,7 @@ export function TeacherFormDialog({
             fullName: teacher.fullName,
             phone: fmtPhone(teacher.phone),
             title: teacher.title ?? "",
+            subjects: teacher.subjects?.length ? teacher.subjects : ["ENGLISH"],
             specialization: teacher.profile.specialization ?? "",
             certificates: teacher.profile.certificates.join(", "),
             experienceYears: teacher.profile.experienceYears != null ? String(teacher.profile.experienceYears) : "",
@@ -303,6 +306,7 @@ export function TeacherFormDialog({
       fullName: f.fullName.trim(),
       phone,
       title: f.title.trim() || null,
+      subjects: f.subjects.length ? f.subjects : ["ENGLISH"],
       specialization: f.specialization.trim() || null,
       certificates: f.certificates.split(",").map((s) => s.trim()).filter(Boolean),
       experienceYears: exp,
@@ -354,6 +358,28 @@ export function TeacherFormDialog({
         </Field>
         <Field label="Unvon" hint="Masalan: IELTS katta ustozi">
           <Input value={f.title} onChange={set("title")} maxLength={80} />
+        </Field>
+        <Field label="Yoʻnalish" required hint="Qaysi fandan dars beradi — roʻyxatda filtr shunga qarab ishlaydi">
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(SUBJECT_LABEL) as Subject[]).map((sj) => {
+              const on = f.subjects.includes(sj);
+              return (
+                <button
+                  key={sj}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setF((s) => ({ ...s, subjects: on ? s.subjects.filter((x) => x !== sj) : [...s.subjects, sj] }))}
+                  className={
+                    "inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 font-label-md text-label-md transition-colors " +
+                    (on ? "border-primary bg-primary text-on-primary" : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface")
+                  }
+                >
+                  <Icon name={SUBJECT_ICON[sj]} size={18} />
+                  {SUBJECT_LABEL[sj]}
+                </button>
+              );
+            })}
+          </div>
         </Field>
         <Field label="Mutaxassislik" hint="Masalan: IELTS 8.5, CELTA">
           <Input value={f.specialization} onChange={set("specialization")} maxLength={80} />

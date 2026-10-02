@@ -45,6 +45,7 @@ const listQuery = pageQuery.extend({
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
   status: z.enum(["ENROLLING", "ACTIVE", "FINISHED"]).optional(),
   levelId: zId.optional(),
+  subject: z.enum(["ENGLISH", "MATH"]).optional(), // fan — guruh oʻz levelidan oladi
   teacherId: zId.optional(), // "none" = ustoz biriktirilmagan
   roomId: zId.optional(),
 });
@@ -170,7 +171,8 @@ function toRow(g: GroupFull, s: Awaited<ReturnType<typeof groupStats>>) {
     code: g.code,
     name: g.name,
     status: g.status,
-    level: g.level ? { id: g.level.id, code: g.level.code, name: g.level.name, label: levelLabel(g.level) } : null,
+    level: g.level ? { id: g.level.id, code: g.level.code, name: g.level.name, subject: g.level.subject, label: levelLabel(g.level) } : null,
+    subject: g.level?.subject ?? null,
     ageGroup: g.ageGroup,
     teacher: g.teacher
       ? {
@@ -240,6 +242,7 @@ export default async function groups(app: FastifyInstance) {
     const items = rows
       .filter((r) => !q.status || r.status === q.status)
       .filter((r) => !q.levelId || r.level?.id === q.levelId)
+      .filter((r) => !q.subject || r.subject === q.subject)
       .filter((r) => !q.teacherId || (q.teacherId === "none" ? !r.teacher : r.teacher?.id === q.teacherId))
       .filter((r) => !q.roomId || r.room?.id === q.roomId)
       .filter(

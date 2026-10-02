@@ -93,7 +93,9 @@ model Session {
 }
 
 model TeacherProfile {
-  userId          String   @id
+  userId          String    @id
+  /** qaysi fanlarda dars beradi (guruh biriktirishda va roʻyxatda filtr) */
+  subjects        Subject[] @default([ENGLISH])
   specialization  String? // "IELTS 8.5"
   certificates    String[]
   experienceYears Int?

@@ -26,6 +26,7 @@ const profileFields = {
   fullName: z.string().trim().min(3, "F.I.Sh. kamida 3 belgi").max(80),
   phone: zPhoneLoose,
   title: z.string().trim().max(80).nullable().optional(),
+  subjects: z.array(z.enum(["ENGLISH", "MATH"])).min(1, "Kamida bitta fan tanlang").max(2).optional(),
   specialization: z.string().trim().max(80).nullable().optional(),
   certificates: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
   experienceYears: z.number().int().min(0).max(60).nullable().optional(),
@@ -112,12 +113,13 @@ async function getTeacher(id: string) {
 
 function profileSnapshot(t: {
   fullName: string; login: string; title: string | null;
-  teacherProfile: { specialization: string | null; certificates: string[]; experienceYears: number | null; bio: string | null; responseTime: string | null } | null;
+  teacherProfile: { subjects?: string[]; specialization: string | null; certificates: string[]; experienceYears: number | null; bio: string | null; responseTime: string | null } | null;
 }) {
   return {
     fullName: t.fullName,
     phone: t.login,
     title: t.title,
+    subjects: t.teacherProfile?.subjects ?? [],
     specialization: t.teacherProfile?.specialization ?? null,
     certificates: t.teacherProfile?.certificates ?? [],
     experienceYears: t.teacherProfile?.experienceYears ?? null,
@@ -130,7 +132,11 @@ export default async function teachers(app: FastifyInstance) {
   // ─── Ro'yxat ───
   app.get("/teachers", async (req) => {
     const q = parse(
-      z.object({ q: z.string().trim().max(100).optional(), status: z.enum(["active", "inactive", "all"]).default("all") }),
+      z.object({
+        q: z.string().trim().max(100).optional(),
+        status: z.enum(["active", "inactive", "all"]).default("all"),
+        subject: z.enum(["ENGLISH", "MATH"]).optional(),
+      }),
       req.query,
     );
     const now = new Date();
@@ -138,6 +144,7 @@ export default async function teachers(app: FastifyInstance) {
       where: {
         role: "TEACHER",
         ...(q.status === "active" ? { isActive: true } : q.status === "inactive" ? { isActive: false } : {}),
+        ...(q.subject ? { teacherProfile: { subjects: { has: q.subject } } } : {}),
         ...(q.q
           ? {
               OR: [
@@ -173,6 +180,7 @@ export default async function teachers(app: FastifyInstance) {
         mustChangePassword: t.mustChangePassword,
         lastLoginAt: t.lastLoginAt,
         telegramLinked: !!t.telegramLink?.isActive,
+        subjects: t.teacherProfile?.subjects ?? [],
         specialization: t.teacherProfile?.specialization ?? null,
         certificates: t.teacherProfile?.certificates ?? [],
         experienceYears: t.teacherProfile?.experienceYears ?? null,
@@ -309,6 +317,7 @@ export default async function teachers(app: FastifyInstance) {
       createdAt: t.createdAt,
       telegramLinked: !!t.telegramLink?.isActive,
       telegramUsername: t.telegramLink?.username ?? null,
+      subjects: t.teacherProfile?.subjects ?? [],
       profile: {
         specialization: t.teacherProfile?.specialization ?? null,
         certificates: t.teacherProfile?.certificates ?? [],
@@ -352,6 +361,7 @@ export default async function teachers(app: FastifyInstance) {
           mustChangePassword: true,
           teacherProfile: {
             create: {
+              subjects: b.subjects ?? ["ENGLISH"],
               specialization: b.specialization ?? null,
               certificates: b.certificates ?? [],
               experienceYears: b.experienceYears ?? null,
@@ -393,6 +403,7 @@ export default async function teachers(app: FastifyInstance) {
           teacherProfile: {
             upsert: {
               create: {
+                subjects: b.subjects ?? ["ENGLISH"],
                 specialization: b.specialization ?? null,
                 certificates: b.certificates ?? [],
                 experienceYears: b.experienceYears ?? null,
@@ -400,6 +411,7 @@ export default async function teachers(app: FastifyInstance) {
                 responseTime: b.responseTime ?? null,
               },
               update: {
+                ...(b.subjects !== undefined ? { subjects: b.subjects } : {}),
                 ...(b.specialization !== undefined ? { specialization: b.specialization } : {}),
                 ...(b.certificates !== undefined ? { certificates: b.certificates } : {}),
                 ...(b.experienceYears !== undefined ? { experienceYears: b.experienceYears } : {}),

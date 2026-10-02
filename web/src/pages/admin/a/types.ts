@@ -172,6 +172,8 @@ export interface TeacherStats {
 export interface TeacherRow extends TeacherStats {
   id: string;
   fullName: string;
+  /** qaysi fanlarda dars beradi */
+  subjects?: Subject[];
   login: string;
   phone: string;
   title: string | null;
@@ -205,6 +207,8 @@ export interface TeachersResponse {
 export interface TeacherDetail {
   id: string;
   fullName: string;
+  /** qaysi fanlarda dars beradi */
+  subjects?: Subject[];
   login: string;
   phone: string;
   title: string | null;

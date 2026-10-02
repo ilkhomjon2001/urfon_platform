@@ -14,7 +14,7 @@ import { AssignRoomDialog, AssignTeacherDialog, RoomsDialog } from "./a/GroupDia
 import { GroupDrawer } from "./a/GroupDrawer";
 import { GroupFormDialog } from "./a/GroupForm";
 import { downloadCsv, GROUP_STATUS, groupMonogram, GroupStatusBadge, keys, LevelChip, useLookups } from "./a/shared";
-import type { GroupDetail, GroupRow, GroupsResponse } from "./a/types";
+import { SUBJECT_LABEL, type GroupDetail, type GroupRow, type GroupsResponse, type Subject } from "./a/types";
 
 const PAGE_SIZE = 20;
 const DISMISS_KEY = "urfon.admin.noTeacherBanner";
@@ -124,6 +124,7 @@ export default function AdminGroupsPage() {
   const [q, setQ] = useSearchParamState("q");
   const [status, setStatus] = useSearchParamState("status");
   const [levelId, setLevelId] = useSearchParamState("level");
+  const [subject, setSubject] = useSearchParamState("fan");
   const [teacherId, setTeacherId] = useSearchParamState("teacher");
   const [roomId, setRoomId] = useSearchParamState("room");
   const [pageStr, setPageStr] = useSearchParamState("page", "1");
@@ -137,7 +138,7 @@ export default function AdminGroupsPage() {
 
   const lookups = useLookups();
   const list = useApiQuery<GroupsResponse>(["admin", "groups", "list"], "/admin/groups", {
-    params: { q: dq, status, levelId, teacherId, roomId, page, pageSize: PAGE_SIZE },
+    params: { q: dq, status, levelId, subject, teacherId, roomId, page, pageSize: PAGE_SIZE },
     placeholderData: (p) => p,
   });
   const data = list.data;
@@ -173,9 +174,9 @@ export default function AdminGroupsPage() {
     setter(v);
     setPageStr(null);
   };
-  const filtersActive = !!(q || status || levelId || teacherId || roomId);
+  const filtersActive = !!(q || status || levelId || subject || teacherId || roomId);
   const resetFilters = () => {
-    for (const s of [setQ, setStatus, setLevelId, setTeacherId, setRoomId, setPageStr]) s(null);
+    for (const s of [setQ, setStatus, setLevelId, setSubject, setTeacherId, setRoomId, setPageStr]) s(null);
   };
 
   const noTeacher = summary?.withoutTeacher ?? [];
@@ -194,7 +195,7 @@ export default function AdminGroupsPage() {
   };
 
   const exportCsv = async () => {
-    const all = await api.get<GroupsResponse>("/admin/groups", { params: { q: dq, status, levelId, teacherId, roomId, page: 1, pageSize: 200 } });
+    const all = await api.get<GroupsResponse>("/admin/groups", { params: { q: dq, status, levelId, subject, teacherId, roomId, page: 1, pageSize: 200 } });
     downloadCsv(
       `guruhlar-${new Date().toISOString().slice(0, 10)}.csv`,
       ["Kod", "Guruh", "Level", "Ustoz", "Xona", "Jadval", "Oʻquvchilar", "Sigʻim", "Kutmoqda", "Oylik toʻlov (soʻm)", "Holat", "Oʻtilgan darslar", "Jami darslar", "Boshlanish"],
@@ -382,6 +383,10 @@ export default function AdminGroupsPage() {
   );
 
   const levels = lookups.data?.levels ?? [];
+
+  // markazda nechta fan bor — bittadan koʻp boʻlsa filtr chiqadi
+
+  const subjects = [...new Set(levels.map((l) => l.subject ?? "ENGLISH"))] as Subject[];
   const teachers = lookups.data?.teachers ?? [];
   const rooms = lookups.data?.rooms ?? [];
   const activePct = summary && summary.total ? Math.round((summary.active / summary.total) * 100) : 0;
@@ -502,6 +507,16 @@ export default function AdminGroupsPage() {
           wrapperClassName="flex-1"
         />
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:flex-nowrap">
+          {subjects.length > 1 ? (
+            <Select
+              aria-label="Fan"
+              value={subject}
+              onChange={(e) => setFilter(setSubject)(e.target.value || null)}
+              placeholder="Fan: barchasi"
+              options={subjects.map((sj) => ({ value: sj, label: SUBJECT_LABEL[sj] }))}
+              wrapperClassName="sm:w-40"
+            />
+          ) : null}
           <Select
             aria-label="Level"
             value={levelId}

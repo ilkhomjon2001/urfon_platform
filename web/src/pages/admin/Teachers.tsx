@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  Alert, Avatar, Badge, Button, Card, ConfirmDialog, DataTable, DropdownMenu, EmptyState, Icon, IconButton, PageHeader, SearchInput, Skeleton, StatCard,
+  Alert, Avatar, Badge, Button, Card, ConfirmDialog, DataTable, DropdownMenu, EmptyState, Icon, IconButton, PageHeader, SearchInput, Select, Skeleton, StatCard,
   Tabs, TabsList, TabsTrigger, type Column,
 } from "@/components/ui";
 import { useShellSearch } from "@/components/shell/ShellSearch";
@@ -13,6 +13,7 @@ import { useDebouncedValue, useFlagParam, useSearchParamState } from "@/lib/hook
 import { toastError, useApiMutation, useApiQuery } from "@/lib/query";
 import { useNavigate } from "react-router-dom";
 import { keys, TempPasswordDialog } from "./a/shared";
+import { SUBJECT_LABEL, type Subject } from "./a/types";
 import { LoadCell, TeacherDrawer, TeacherFormDialog } from "./a/TeacherParts";
 import type { ConflictRef, TeacherDetail, TeacherRow, TeachersResponse } from "./a/types";
 
@@ -48,7 +49,7 @@ function TeacherMobileList({ rows, loading, onOpen }: { rows: TeacherRow[] | und
                 {t.isActive ? <Badge tone="success" dot>Faol</Badge> : <Badge tone="danger" dot>Bloklangan</Badge>}
               </div>
               <div className="truncate text-body-sm text-on-surface-variant">
-                <span className="font-semibold text-tertiary">{t.specialization ?? t.title ?? "Ustoz"}</span> · {fmtPhone(t.phone)}
+                <span className="font-semibold text-tertiary">{t.subjects?.length ? t.subjects.map((sj) => SUBJECT_LABEL[sj]).join(", ") : (t.specialization ?? t.title ?? "Ustoz")}</span> · {fmtPhone(t.phone)}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-body-sm tabular-nums text-on-surface-variant">
                 <span>{t.groupsCount} guruh</span>
@@ -73,12 +74,13 @@ export default function AdminTeachersPage() {
   const navigate = useNavigate();
   const [q, setQ] = useSearchParamState("q");
   const [status, setStatus] = useSearchParamState("status", "all");
+  const [subject, setSubject] = useSearchParamState("fan");
   const [teacherId, setTeacherId] = useSearchParamState("teacher");
   const [createOpen, setCreateOpen] = useFlagParam("new");
   const { query: shellQuery } = useShellSearch();
   const dq = useDebouncedValue(q || shellQuery, 300);
   const list = useApiQuery<TeachersResponse>(["admin", "teachers", "list"], "/admin/teachers", {
-    params: { q: dq, status },
+    params: { q: dq, status, subject: subject || undefined },
     placeholderData: (p) => p,
   });
   const s = list.data?.summary;
@@ -120,7 +122,7 @@ export default function AdminTeachersPage() {
             <div className="min-w-0">
               <div className="truncate font-headline-sm text-headline-sm text-on-surface">{t.fullName}</div>
               <div className="truncate text-body-sm text-on-surface-variant">
-                <span className="font-semibold text-tertiary">{t.specialization ?? t.title ?? "Ustoz"}</span> · {fmtPhone(t.phone)}
+                <span className="font-semibold text-tertiary">{t.subjects?.length ? t.subjects.map((sj) => SUBJECT_LABEL[sj]).join(", ") : (t.specialization ?? t.title ?? "Ustoz")}</span> · {fmtPhone(t.phone)}
               </div>
             </div>
           </div>
@@ -310,6 +312,14 @@ export default function AdminTeachersPage() {
 
       <Card className="mb-4 flex flex-col gap-3 p-4 md:flex-row md:items-center">
         <SearchInput value={q} onValueChange={(v) => setQ(v || null)} placeholder="Ism, telefon yoki mutaxassislik…" wrapperClassName="flex-1" />
+        <Select
+          aria-label="Yoʻnalish"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value || null)}
+          placeholder="Yoʻnalish: barchasi"
+          options={(Object.keys(SUBJECT_LABEL) as Subject[]).map((sj) => ({ value: sj, label: SUBJECT_LABEL[sj] }))}
+          wrapperClassName="md:w-48"
+        />
         <Tabs value={status} onValueChange={(v) => setStatus(v)} variant="segmented">
           <TabsList>
             <TabsTrigger value="all">Barchasi</TabsTrigger>
