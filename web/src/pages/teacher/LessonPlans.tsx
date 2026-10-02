@@ -16,6 +16,7 @@ export default function TeacherLessonPlansPage() {
   const mine = new Set((q.data?.mine ?? []).map((m) => m.levelId));
   // oʻz guruhlarining bosqichlari roʻyxat boshida
   const levels = [...items.filter((l) => mine.has(l.id)), ...items.filter((l) => !mine.has(l.id))];
+  const subjectCount = new Set(items.map((l) => l.subject ?? "ENGLISH")).size;
   return (
     <>
       <PageHeader
@@ -24,7 +25,7 @@ export default function TeacherLessonPlansPage() {
         subtitle="Levelni tanlang, keyin unit ichidagi darsni bosing — toʻliq reja ochiladi"
       />
       <PlanReader
-        levels={levels.map((l) => ({ ...l, label: mine.has(l.id) ? `${l.label} (mening guruhim)` : l.label }))}
+        levels={levels.map((l) => ({ ...l, label: `${subjectCount > 1 ? `${l.subject === "MATH" ? "Matematika" : "Ingliz tili"} · ` : ""}${mine.has(l.id) ? `${l.label} (mening guruhim)` : l.label}` }))}
         loadingLevels={q.isLoading}
         defaultLevelId={q.data?.mine[0]?.levelId}
         defaultTrack={q.data?.mine[0]?.track}

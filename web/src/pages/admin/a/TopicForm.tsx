@@ -4,7 +4,7 @@ import { Alert, Button, Checkbox, Dialog, Field, Input, Select, Textarea } from 
 import { api, ApiError } from "@/lib/api";
 import { useApiMutation } from "@/lib/query";
 import { keys, MOBILE_FULL_CLASS } from "./shared";
-import type { LevelStat, TopicRow } from "./types";
+import { SUBJECT_LABEL, type LevelStat, type Subject, type TopicRow } from "./types";
 
 interface TopicFormState {
   levelId: string;
@@ -174,7 +174,7 @@ export function TopicFormDialog({
   );
 }
 
-const EMPTY_LEVEL = { code: "", name: "", audience: "", cefr: "", weeks: "", description: "" };
+const EMPTY_LEVEL = { code: "", name: "", subject: "ENGLISH" as Subject, audience: "", cefr: "", weeks: "", description: "" };
 
 /** Bosqich (level) yaratish va tavsifini tahrirlash. Tavsif admin panelda bosqichlar roʻyxatida koʻrinadi. */
 export function LevelDialog({
@@ -199,6 +199,7 @@ export function LevelDialog({
           ? {
               code: level.code,
               name: level.name,
+              subject: level.subject ?? "ENGLISH",
               audience: level.audience ?? "",
               cefr: level.cefr ?? "",
               weeks: level.weeks != null ? String(level.weeks) : "",
@@ -230,6 +231,7 @@ export function LevelDialog({
       const l = await save.mutateAsync({
         ...(editing ? {} : { code: f.code.trim().toUpperCase() }),
         name: f.name.trim(),
+        subject: f.subject,
         audience: f.audience.trim() || null,
         cefr: f.cefr.trim() || null,
         weeks,
@@ -281,6 +283,13 @@ export function LevelDialog({
         </Field>
         <Field label="Nomi" required>
           <Input value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} placeholder="Business English" maxLength={80} autoFocus={editing} />
+        </Field>
+        <Field label="Fan" required hint="Guruh fanni oʻz bosqichidan oladi">
+          <Select
+            value={f.subject}
+            onChange={(e) => setF((s) => ({ ...s, subject: e.target.value as Subject }))}
+            options={(Object.keys(SUBJECT_LABEL) as Subject[]).map((k) => ({ value: k, label: SUBJECT_LABEL[k] }))}
+          />
         </Field>
         <Field label="Kimga moʻljallangan" hint="Guruh ochayotganda shu yozuv koʻrinadi">
           <Input value={f.audience} onChange={(e) => setF((s) => ({ ...s, audience: e.target.value }))} placeholder="13–16 yosh" maxLength={60} />

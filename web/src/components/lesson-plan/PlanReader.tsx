@@ -11,6 +11,8 @@ import type { LevelPlanResponse, PlanLesson, PlanTrack, PlanUnitDto } from "@/li
 export interface ReaderLevel {
   id: string;
   label: string;
+  /** fan: ingliz tili yoki matematika (bir nechta fan boʻlsa nomda koʻrsatiladi) */
+  subject?: "ENGLISH" | "MATH";
   audience: string | null;
   cefr: string | null;
 }

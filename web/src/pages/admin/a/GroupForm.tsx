@@ -7,6 +7,7 @@ import { useDebouncedValue } from "@/lib/hooks";
 import { useApiMutation, useApiQuery } from "@/lib/query";
 import type { Paginated } from "@/lib/types";
 import { DayPicker, isTime, keys, MOBILE_FULL_CLASS, RoomPickList, TeacherPickList, useLookups } from "./shared";
+import { SUBJECT_LABEL, type Subject } from "./types";
 import { toast } from "sonner";
 import type { AdminStudentItem, GroupDetail, GroupRow } from "./types";
 
@@ -199,6 +200,8 @@ export function GroupFormDialog({
   };
 
   const levels = lookups.data?.levels ?? [];
+  // markazda bir nechta fan boʻlsa, level nomi oldida fan koʻrsatiladi
+  const subjectCount = new Set(levels.map((l) => l.subject ?? "ENGLISH")).size;
 
   return (
     <Dialog
@@ -239,7 +242,7 @@ export function GroupFormDialog({
                 value={f.levelId}
                 onChange={(e) => set("levelId", e.target.value)}
                 placeholder="Levelsiz"
-                options={levels.map((l) => ({ value: l.id, label: l.label ?? l.name }))}
+                options={levels.map((l) => ({ value: l.id, label: `${subjectCount > 1 ? `${SUBJECT_LABEL[(l.subject ?? "ENGLISH") as Subject]} · ` : ""}${l.label ?? l.name}` }))}
               />
             )}
           </Field>

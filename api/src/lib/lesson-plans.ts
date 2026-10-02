@@ -8,9 +8,10 @@ const label = (l: { code: string; name: string }) => {
   return m ? `Level ${m[1]} · ${l.name}` : l.name;
 };
 
-type LevelRow = { id: string; code: string; name: string; order: number; audience: string | null; cefr: string | null; weeks: number | null; description: string | null };
+type LevelRow = { id: string; code: string; name: string; subject: "ENGLISH" | "MATH"; order: number; audience: string | null; cefr: string | null; weeks: number | null; description: string | null };
 const levelDto = (l: LevelRow) => ({
-  id: l.id, code: l.code, name: l.name, order: l.order, label: label(l),
+  id: l.id, code: l.code,
+  subject: l.subject, name: l.name, order: l.order, label: label(l),
   audience: l.audience, cefr: l.cefr, weeks: l.weeks, description: l.description,
 });
 

@@ -161,10 +161,17 @@ model Room {
   @@unique([branchId, name])
 }
 
+/** Markazdagi yoʻnalishlar. Har level bitta fanga tegishli; guruh fanni oʻz levelidan oladi. */
+enum Subject {
+  ENGLISH // ingliz tili
+  MATH // matematika
+}
+
 model Level {
   id          String  @id @default(cuid())
-  code        String  @unique // "STARTER", "BEGINNER", "ELEMENTARY" … "CEFR", "IELTS" — har level alohida kitob
+  code        String  @unique // "STARTER", "BEGINNER", … ; matematika uchun "MATH_5" kabi
   name        String // "Beginner"
+  subject     Subject @default(ENGLISH)
   order       Int
   audience    String? // kimga moʻljallangan: "13–16 yosh", "8–12 yosh"
   cefr        String? // xalqaro daraja: "Pre-A1 → A1", "B1 → B2"

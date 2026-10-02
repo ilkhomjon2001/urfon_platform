@@ -26,14 +26,16 @@ const createBody = z.object({ ...topicFields, levelId: zId, status: z.enum(["DRA
 const updateBody = z.object(topicFields).partial();
 
 // Level tavsifi: admin panelda "bu bosqich kimga va nima uchun" degan savolga javob beradi.
+const SUBJECTS = ["ENGLISH", "MATH"] as const;
 const levelMeta = {
+  subject: z.enum(SUBJECTS).optional(),
   audience: z.string().trim().max(60).nullable().optional(),
   cefr: z.string().trim().max(40).nullable().optional(),
   weeks: z.number().int().min(1).max(200).nullable().optional(),
   description: z.string().trim().max(1000).nullable().optional(),
 };
-const levelSnapshot = (l: { code?: string; name: string; order: number; audience: string | null; cefr: string | null; weeks: number | null; description: string | null }) => ({
-  ...(l.code ? { code: l.code } : {}), name: l.name, order: l.order, audience: l.audience, cefr: l.cefr, weeks: l.weeks, description: l.description,
+const levelSnapshot = (l: { code?: string; name: string; subject?: string; order: number; audience: string | null; cefr: string | null; weeks: number | null; description: string | null }) => ({
+  ...(l.code ? { code: l.code } : {}), name: l.name, ...(l.subject ? { subject: l.subject } : {}), order: l.order, audience: l.audience, cefr: l.cefr, weeks: l.weeks, description: l.description,
 });
 
 const trackQuery = z.object({ track: z.enum(["teen", "kids"]).default("teen") });
@@ -86,6 +88,7 @@ export default async function curriculum(app: FastifyInstance) {
           id: l.id,
           code: l.code,
           name: l.name,
+          subject: l.subject,
           order: l.order,
           label: levelLabel(l),
           audience: l.audience,
@@ -123,7 +126,7 @@ export default async function curriculum(app: FastifyInstance) {
     const level = await prisma.$transaction(async (tx) => {
       const l = await tx.level.create({
         data: {
-          code: b.code, name: b.name, order: b.order ?? (max._max.order ?? 0) + 1,
+          code: b.code, name: b.name, subject: b.subject ?? "ENGLISH", order: b.order ?? (max._max.order ?? 0) + 1,
           audience: b.audience ?? null, cefr: b.cefr ?? null, weeks: b.weeks ?? null, description: b.description ?? null,
         },
       });

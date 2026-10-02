@@ -37,7 +37,7 @@ async function main() {
       else stats.levelsCreated++;
       continue;
     }
-    const meta = { name: lv.name, order: lv.order, audience: lv.audience, cefr: lv.cefr, weeks: lv.weeks, description: lv.description };
+    const meta = { name: lv.name, subject: "ENGLISH" as const, order: lv.order, audience: lv.audience, cefr: lv.cefr, weeks: lv.weeks, description: lv.description };
     const level = await prisma.level.upsert({ where: { code: lv.code }, create: { code: lv.code, ...meta }, update: meta });
     if (before) stats.levelsUpdated++;
     else stats.levelsCreated++;
@@ -77,7 +77,8 @@ async function main() {
   // 3) Dasturda yoʻq eski levellar
   const codes = CURRICULUM.map((l) => l.code);
   const old = await prisma.level.findMany({
-    where: { code: { notIn: codes } },
+    // faqat ingliz tili levellari — boshqa fanlar (matematika) qoʻlda yaratiladi va bu skriptga tegishli emas
+    where: { code: { notIn: codes }, subject: "ENGLISH" },
     select: { id: true, code: true, groups: { select: { id: true, code: true } } },
   });
   for (const o of old) {

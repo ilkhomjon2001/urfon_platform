@@ -10,6 +10,8 @@ export interface LevelRef {
   id: string;
   code: string;
   name: string;
+  /** fan: ingliz tili yoki matematika */
+  subject?: Subject;
   label: string | null;
 }
 
@@ -241,7 +243,14 @@ export interface TeacherDetail {
 
 // ─── Mavzular bazasi ───
 /** Bosqich tavsifi: kimga moʻljallangan, CEFR darajasi, necha hafta va nima oʻrgatadi. */
+export type Subject = "ENGLISH" | "MATH";
+
+/** Fan nomlari — UI da yagona joy. */
+export const SUBJECT_LABEL: Record<Subject, string> = { ENGLISH: "Ingliz tili", MATH: "Matematika" };
+export const SUBJECT_ICON: Record<Subject, string> = { ENGLISH: "translate", MATH: "calculate" };
+
 export interface LevelMeta {
+  subject?: Subject;
   audience: string | null;
   cefr: string | null;
   weeks: number | null;

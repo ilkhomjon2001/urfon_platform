@@ -13,7 +13,7 @@ import { useDebouncedValue, useFlagParam, useSearchParamState } from "@/lib/hook
 import { useApiMutation, useApiQuery } from "@/lib/query";
 import { downloadCsv, keys, TOPIC_STATUS } from "./a/shared";
 import { LevelDialog, TopicFormDialog } from "./a/TopicForm";
-import type { LevelStat, TopicRow, TopicsResponse } from "./a/types";
+import { SUBJECT_ICON, SUBJECT_LABEL, type LevelStat, type Subject, type TopicRow, type TopicsResponse } from "./a/types";
 
 const NOTE_KEY = "urfon.admin.curriculumNote";
 const MATERIAL_LABEL: Record<string, string> = { PDF: "PDF", AUDIO: "Audio", VIDEO: "Video", DOC: "Hujjat", IMAGE: "Rasm", LINK: "Havola" };
@@ -26,7 +26,11 @@ const FILTERS = [
 
 export default function AdminCurriculumPage() {
   const levelsQ = useApiQuery<{ items: LevelStat[] }>(["admin", "curriculum", "levels"], "/admin/curriculum/levels");
+  const [subject, setSubject] = useState<Subject>("ENGLISH");
   const levels = levelsQ.data?.items ?? [];
+  // Fan boʻyicha ajratish: markazda bir nechta yoʻnalish boʻlsa, chiplar chiqadi
+  const subjects = [...new Set(levels.map((l) => l.subject ?? "ENGLISH"))] as Subject[];
+  const shownLevels = subjects.length > 1 ? levels.filter((l) => (l.subject ?? "ENGLISH") === subject) : levels;
   const [levelParam, setLevelParam] = useSearchParamState("level");
   const [filter, setFilter] = useSearchParamState("t", "ACTIVE");
   const [q, setQ] = useSearchParamState("q");
@@ -185,6 +189,29 @@ export default function AdminCurriculumPage() {
       <Card className="mb-4 flex flex-col gap-4 p-4 sm:p-5">
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Akademik bosqich" className="min-w-[min(100%,280px)] flex-1">
+            {subjects.length > 1 ? (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {subjects.map((sj) => (
+                  <button
+                    key={sj}
+                    type="button"
+                    onClick={() => {
+                      setSubject(sj);
+                      const first = levels.find((l) => (l.subject ?? "ENGLISH") === sj);
+                      if (first) setLevelParam(first.id);
+                    }}
+                    aria-pressed={subject === sj}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-label-md text-label-md transition-colors",
+                      subject === sj ? "border-primary bg-primary text-on-primary" : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface",
+                    )}
+                  >
+                    <Icon name={SUBJECT_ICON[sj]} size={16} />
+                    {SUBJECT_LABEL[sj]}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <Select
               value={levelId ?? ""}
               onChange={(e) => {
@@ -193,7 +220,7 @@ export default function AdminCurriculumPage() {
               }}
               disabled={levelsQ.isLoading || !levels.length}
               placeholder={levelsQ.isLoading ? "Yuklanmoqda…" : "Bosqichni tanlang"}
-              options={levels.map((l) => ({
+              options={shownLevels.map((l) => ({
                 value: l.id,
                 label: `${l.label ?? l.name}${l.audience ? ` — ${l.audience}` : ""} · ${l.topicsCount} mavzu`,
               }))}

@@ -40,7 +40,7 @@ export default async function lookups(app: FastifyInstance) {
       }),
     ]);
     return {
-      levels: levels.map((l) => ({ id: l.id, code: l.code, name: l.name, order: l.order, label: levelLabel(l) })),
+      levels: levels.map((l) => ({ id: l.id, code: l.code, name: l.name, subject: l.subject, order: l.order, label: levelLabel(l) })),
       rooms: rooms.map((r) => ({ id: r.id, name: r.name, location: r.location, capacity: r.capacity, kind: r.kind })),
       teachers: teachers.map((t) => ({ id: t.id, fullName: t.fullName, title: t.title, specialization: t.teacherProfile?.specialization ?? null })),
       groups,

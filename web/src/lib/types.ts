@@ -113,6 +113,8 @@ export interface PlanLevel {
   id: string;
   code: string;
   name: string;
+  /** fan: ingliz tili yoki matematika */
+  subject?: "ENGLISH" | "MATH";
   label: string;
   audience: string | null;
   cefr: string | null;
