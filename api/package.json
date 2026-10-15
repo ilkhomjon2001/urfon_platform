@@ -18,6 +18,7 @@
     "shop:import": "tsx scripts/import-shop.ts",
     "credentials:issue": "tsx scripts/issue-credentials.ts",
     "ai:test": "tsx scripts/ai-test.ts",
+    "report:preview": "tsx scripts/report-preview.ts",
     "bot:selftest": "tsx scripts/bot-selftest.ts",
     "prisma:generate": "prisma generate"
   },

@@ -71,7 +71,8 @@ const OPENERS = [
   (n: string) => `${n} bugun yana bir dars oʻtadi va bilimiga bilim qoʻshdi.`,
 ];
 
-async function dailyContent(studentId: string, now: Date, fullName = "") {
+/** Kunlik xabar matni. Eksport — `report:preview` skripti shu matnni hech narsa yubormasdan koʻrsatadi. */
+export async function dailyContent(studentId: string, now: Date, fullName = "") {
   const from = startOfDayTz(now);
   const to = endOfDayTz(now);
   const enrolled = { students: { some: { studentId, status: "ACTIVE" as const } } };
