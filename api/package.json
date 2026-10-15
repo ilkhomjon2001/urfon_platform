@@ -17,11 +17,11 @@
     "curriculum:import": "tsx scripts/import-curriculum.ts",
     "shop:import": "tsx scripts/import-shop.ts",
     "credentials:issue": "tsx scripts/issue-credentials.ts",
+    "ai:test": "tsx scripts/ai-test.ts",
     "bot:selftest": "tsx scripts/bot-selftest.ts",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.134.0",
     "@fastify/cookie": "11.0.2",
     "@fastify/cors": "11.1.0",
     "@fastify/helmet": "13.0.1",

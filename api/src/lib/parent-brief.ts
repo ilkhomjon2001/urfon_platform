@@ -2,12 +2,12 @@
 // soʻrash mumkin boʻlgan savollar. Matnni Claude yozadi, natija darsga bogʻlab saqlanadi
 // (Lesson.parentBrief) — demak bir dars uchun bir marta chaqiriladi, guruhdagi hamma oʻquvchiga shu matn ketadi.
 //
-// Kalit (ANTHROPIC_API_KEY) boʻlmasa yoki soʻrov xato bersa — zaxira matn ishlatiladi: ota-ona baribir
-// mavzuni va savollarni oladi, faqat jumlalar shablondan boʻladi. Hisobot hech qachon toʻxtamaydi.
-import Anthropic from "@anthropic-ai/sdk";
+// Matnni AI yozadi (GEMINI_API_KEY yoki ANTHROPIC_API_KEY — qaysi biri .env da boʻlsa, lib/ai.ts tanlaydi).
+// Kalit boʻlmasa yoki soʻrov xato bersa — zaxira matn ishlatiladi: ota-ona baribir mavzuni va savollarni
+// oladi, faqat jumlalar shablondan boʻladi. Hisobot hech qachon toʻxtamaydi.
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
-import { config } from "../config.js";
+import { aiJson, aiProvider } from "./ai.js";
 import { planFor } from "./lesson-plans.js";
 
 export type ParentBrief = {
@@ -17,12 +17,9 @@ export type ParentBrief = {
   questions: string[];
   /** yangi soʻzlar: "word – maʼno" (bor boʻlsa) */
   words: string[];
-  /** matn qayerdan: AI yoki zaxira shablon */
-  source: "ai" | "fallback";
+  /** matn qayerdan: model nomi yoki zaxira shablon */
+  source: "gemini" | "claude" | "fallback";
 };
-
-const MODEL = "claude-opus-5-5";
-const client = config.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }) : null;
 
 type LessonRow = {
   id: string;
@@ -82,21 +79,14 @@ const SYSTEM = [
   "summary — 1–2 jumla, «Farzandingiz ...» deb boshlansin. questions — 2 yoki 3 ta savol.",
 ].join("\n");
 
-async function askClaude(input: string): Promise<{ summary: string; questions: string[] } | null> {
-  if (!client) return null;
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 1200,
-    output_config: { effort: "low" },
-    system: SYSTEM,
-    messages: [{ role: "user", content: input }],
-  });
-  if (res.stop_reason === "refusal") return null;
-  const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-  const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-  const parsed = JSON.parse(json) as { summary?: unknown; questions?: unknown };
+/** Modeldan matn soʻraydi va tekshiradi. Natija boʻsh/notoʻgʻri boʻlsa — null. */
+async function askModel(input: string): Promise<{ summary: string; questions: string[] } | null> {
+  const parsed = await aiJson<{ summary?: unknown; questions?: unknown }>(SYSTEM, input);
+  if (!parsed) return null;
   const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
-  const questions = Array.isArray(parsed.questions) ? parsed.questions.filter((q): q is string => typeof q === "string" && q.trim().length > 3).slice(0, 3) : [];
+  const questions = Array.isArray(parsed.questions)
+    ? parsed.questions.filter((q): q is string => typeof q === "string" && q.trim().length > 3).map((q) => q.trim()).slice(0, 3)
+    : [];
   if (!summary || !questions.length) return null;
   return { summary, questions };
 }
@@ -128,9 +118,9 @@ export async function parentBriefFor(lesson: LessonRow, log: { warn: (e: unknown
     .join("\n");
 
   try {
-    const ai = await askClaude(facts);
+    const ai = await askModel(facts);
     if (!ai) return fallback;
-    const brief: ParentBrief = { ...ai, words: words.slice(0, 5), source: "ai" };
+    const brief: ParentBrief = { ...ai, words: words.slice(0, 5), source: aiProvider === "gemini" ? "gemini" : "claude" };
     await prisma.lesson.update({ where: { id: lesson.id }, data: { parentBrief: brief as unknown as Prisma.InputJsonValue } });
     return brief;
   } catch (e) {
