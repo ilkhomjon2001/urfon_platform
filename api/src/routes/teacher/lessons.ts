@@ -2,13 +2,15 @@
 // davomat, faollik tangasi, darsdagi baho va baho tahriri.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { AttendanceStatus, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { AttendanceStatus } from "@prisma/client";
 import { prisma, type Tx } from "../../db.js";
 import { planFor } from "../../lib/lesson-plans.js";
 import { parse, auditCtx, idParam, zGrade } from "../../lib/http.js";
 import { assertTeacherLesson } from "../../lib/access.js";
 import { writeAudit } from "../../lib/audit.js";
 import { awardCoins, coinRef, revokeCoins, syncGradeCoins, touchStreak } from "../../lib/coins.js";
+import { parentBriefFor } from "../../lib/parent-brief.js";
 import { notifyParents } from "../../lib/notify.js";
 import { badRequest, notFound } from "../../lib/errors.js";
 import { startOfDayTz } from "../../lib/dates.js";
@@ -372,7 +374,7 @@ export default async function lessons(app: FastifyInstance) {
       });
     }
 
-    return prisma.$transaction(async (tx) => {
+    const done = await prisma.$transaction(async (tx) => {
       const data: Prisma.LessonUpdateInput = { status: "DONE" };
       if (body.summary !== undefined) data.summary = body.summary || null;
       if (body.homeworkNote !== undefined) data.homeworkNote = body.homeworkNote || null;
@@ -388,6 +390,13 @@ export default async function lessons(app: FastifyInstance) {
       });
       return { id, status: row.status, summary: row.summary, homeworkNote: row.homeworkNote };
     });
+    // Ota-onaga ketadigan matnni hozirdan yozib qoʻyamiz: kechki hisobotgacha bir necha soat bor,
+    // model band boʻlsa ham keyin qayta urinishga ulguramiz. Javobni kutmaymiz — ustoz kutib qolmasin.
+    void prisma.lesson
+      .findUnique({ where: { id }, select: { id: true, title: true, summary: true, parentBrief: true, group: { select: { name: true, ageGroup: true } } } })
+      .then((row) => (row ? parentBriefFor(row, req.log) : null))
+      .catch(() => null);
+    return done;
   });
 
   // Xulosa / uyga vazifa izohi / nomni saqlash (ota-onaga ko'rinadi)
@@ -400,6 +409,8 @@ export default async function lessons(app: FastifyInstance) {
     if (body.summary !== undefined && (body.summary || null) !== l.summary) data.summary = body.summary || null;
     if (body.homeworkNote !== undefined && (body.homeworkNote || null) !== l.homeworkNote) data.homeworkNote = body.homeworkNote || null;
     if (body.title !== undefined && body.title !== l.title) data.title = body.title;
+    // Mavzu yoki xulosa oʻzgarsa, ota-onaga ketadigan matn yangi maʼlumot bilan qayta yoziladi
+    if (data.title !== undefined || data.summary !== undefined) data.parentBrief = Prisma.DbNull;
     if (!Object.keys(data).length) return { id, title: l.title, summary: l.summary, homeworkNote: l.homeworkNote, changed: false };
     return prisma.$transaction(async (tx) => {
       const row = await tx.lesson.update({ where: { id }, data });

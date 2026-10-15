@@ -102,7 +102,9 @@ export async function dailyContent(studentId: string, now: Date, fullName = "") 
   ]);
   const coinsToday = coins._sum.amount ?? 0;
 
-  const first = fullName.trim().split(/\s+/)[0] || "Farzandingiz";
+  // Roʻyxatlarda "Familiya Ism" tartibi — murojaat uchun oxirgi soʻz (ism) olinadi
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const first = parts.at(-1) || "Farzandingiz";
   const attended = lessons.some((l) => l.attendance[0] && (l.attendance[0].status === "PRESENT" || l.attendance[0].status === "LATE"));
   const missed = lessons.find((l) => l.attendance[0]?.status === "ABSENT" || l.attendance[0]?.status === "EXCUSED");
 
