@@ -302,6 +302,7 @@ model Lesson {
   endsAt       DateTime
   status       LessonStatus  @default(PLANNED)
   summary      String? // ustozning dars xulosasi (ota-onaga ko'rinadi)
+  parentBrief Json? // ota-onaga ketadigan kunlik xabar matni (AI yozadi, bir marta)
   homeworkNote String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

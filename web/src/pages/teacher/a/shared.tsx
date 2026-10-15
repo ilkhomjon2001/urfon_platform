@@ -74,7 +74,8 @@ export const SKILL_LABEL: Record<Skill, string> = {
 export const pctTone = (p: number | null | undefined): Tone =>
   p == null ? "neutral" : p >= 90 ? "success" : p >= 75 ? "primary" : p >= 60 ? "warning" : "danger";
 
-export const topicText = (t: TopicLite) => `Unit ${t.unit} — ${t.title}`;
+// Mavzu nomi odatda allaqachon "Unit 2 · ..." bilan boshlanadi — unda raqam qayta qoʻshilmaydi
+export const topicText = (t: TopicLite) => (/^unit\s*\d/i.test(t.title.trim()) ? t.title : `Unit ${t.unit} — ${t.title}`);
 
 export function lessonTitle(l: { title: string | null; topics?: TopicLite[] }) {
   if (l.title) return l.title;

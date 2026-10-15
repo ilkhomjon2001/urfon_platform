@@ -9,6 +9,7 @@ import {
   avgLabel, gradeLabel, monthLocative,
 } from "../bot/format.js";
 import { attendanceRate, homeworkState } from "../bot/views.js";
+import { parentBriefFor } from "../lib/parent-brief.js";
 import type { Log } from "../bot/bot.js";
 
 const isUnique = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
@@ -42,7 +43,7 @@ export async function runDailyParentReports(now = new Date(), log: Log = console
       continue;
     }
     try {
-      const { payload, body } = await dailyContent(s.id, now);
+      const { payload, body } = await dailyContent(s.id, now, s.fullName);
       await prisma.$transaction(async (tx) => {
         await tx.report.create({ data: { type: "DAILY_PARENT", period, studentId: s.id, payload } });
         notified += await notifyParents(tx, s.id, {
@@ -62,7 +63,15 @@ export async function runDailyParentReports(now = new Date(), log: Log = console
   return { period, students: students.length, created, existed, notified };
 }
 
-async function dailyContent(studentId: string, now: Date) {
+/** Iliq boshlanma — har kuni bir xil boʻlmasligi uchun sanaga qarab navbatma-navbat. */
+const OPENERS = [
+  (n: string) => `${n} bugun darsda boʻldi — maqsadiga yana bir qadam yaqinlashdi.`,
+  (n: string) => `${n} bugun ham darsga keldi. Har bir dars — kelajagi uchun qoʻyilgan gʻisht.`,
+  (n: string) => `${n} bugungi darsni oʻtkazib yubormadi — mehnati bekor ketmaydi.`,
+  (n: string) => `${n} bugun yana bir dars oʻtadi va bilimiga bilim qoʻshdi.`,
+];
+
+async function dailyContent(studentId: string, now: Date, fullName = "") {
   const from = startOfDayTz(now);
   const to = endOfDayTz(now);
   const enrolled = { students: { some: { studentId, status: "ACTIVE" as const } } };
@@ -70,7 +79,11 @@ async function dailyContent(studentId: string, now: Date) {
     prisma.lesson.findMany({
       where: { group: enrolled, startsAt: { gte: from, lte: to }, status: { not: "CANCELLED" } },
       orderBy: { startsAt: "asc" },
-      select: { id: true, title: true, startsAt: true, endsAt: true, group: { select: { name: true } }, attendance: { where: { studentId }, select: { status: true, arrivedAt: true } } },
+      select: {
+        id: true, title: true, summary: true, parentBrief: true, startsAt: true, endsAt: true,
+        group: { select: { name: true, ageGroup: true } },
+        attendance: { where: { studentId }, select: { status: true, arrivedAt: true } },
+      },
     }),
     prisma.grade.findMany({ where: { studentId, gradedAt: { gte: from, lte: to } }, orderBy: { gradedAt: "asc" }, select: { value: true, kind: true, title: true, comment: true } }),
     prisma.homework.findMany({
@@ -88,25 +101,49 @@ async function dailyContent(studentId: string, now: Date) {
   ]);
   const coinsToday = coins._sum.amount ?? 0;
 
+  const first = fullName.trim().split(/\s+/)[0] || "Farzandingiz";
+  const attended = lessons.some((l) => l.attendance[0] && (l.attendance[0].status === "PRESENT" || l.attendance[0].status === "LATE"));
+  const missed = lessons.find((l) => l.attendance[0]?.status === "ABSENT" || l.attendance[0]?.status === "EXCUSED");
+
   const lines: string[] = [];
+  // 1) Iliq boshlanma
+  if (attended) lines.push(OPENERS[new Date(now).getDate() % OPENERS.length](first), "");
+  else if (missed) lines.push(`${first} bugungi darsda qatnashmadi. Keyingi darsga birga tayyorlanaylik — bitta dars ham qoldirilmasa, natija tezroq koʻrinadi.`, "");
+  else lines.push(`${first}ning bugungi darsi haqida qisqacha maʼlumot.`, "");
+
+  // 2) Darslar va davomat
   for (const l of lessons) {
     const a = l.attendance[0];
     const state = !a
-      ? "davomat belgilanmagan"
+      ? "ustoz davomatni hali belgilamadi"
       : (a.status === "PRESENT" || a.status === "LATE") && a.arrivedAt
         ? `${ATTENDANCE_LABEL[a.status]}, ${fmtTime(a.arrivedAt)}`
         : ATTENDANCE_LABEL[a.status];
-    // Ustoz yozgan dars mavzusi ham ota-onaga boradi (matematikada mavzu bazasi yoʻq — nom qoʻlda yoziladi)
     lines.push(`Dars: ${l.group.name} (${fmtTime(l.startsAt)}) — ${state}.`);
-    if (l.title) lines.push(`Mavzu: “${l.title}”.`);
   }
+
+  // 3) Bugun nimani oʻrgandi + ota-onaga savollar (matnni AI yozadi, kalit boʻlmasa shablon)
+  const main = lessons.find((l) => l.attendance[0] && (l.attendance[0].status === "PRESENT" || l.attendance[0].status === "LATE")) ?? lessons[0];
+  if (main) {
+    const brief = await parentBriefFor(main);
+    lines.push("", `Bugun nimani oʻrgandi: ${brief.summary}`);
+    if (brief.words.length) lines.push(`Yangi soʻzlar: ${brief.words.slice(0, 5).join(" · ")}`);
+    if (brief.questions.length) {
+      lines.push("", "Farzandingizdan soʻrashingiz mumkin:");
+      for (const q of brief.questions) lines.push(`• ${q}`);
+    }
+  }
+
+  // 4) Baholar, vazifa, tanga — faqat bor boʻlsa
   if (grades.length) {
-    lines.push(`Baholar: ${grades.map((g) => `${fmtGrade(g.value)} (${gradeLabel(g.value)}) — ${g.title ?? GRADE_KIND[g.kind]}`).join("; ")}.`);
-  } else lines.push("Bugun baho qoʻyilmadi.");
-  for (const h of due) lines.push(`Uyga vazifa: “${h.title}” — ${fmtTime(h.dueAt)} gacha, ${homeworkState(h.submissions[0]?.status, h.dueAt, now)}.`);
-  for (const h of assigned) lines.push(`Yangi uyga vazifa: “${h.title}” — ${fmtDate(h.dueAt, false)}, ${fmtTime(h.dueAt)} gacha.`);
-  if (submittedToday) lines.push(`Bugun ${submittedToday} ta uyga vazifa topshirildi.`);
-  lines.push(`Kumush tangalar: bugun ${fmtSigned(coinsToday)}.`);
+    lines.push("", `Baholar: ${grades.map((g) => `${fmtGrade(g.value)} (${gradeLabel(g.value)}) — ${g.title ?? GRADE_KIND[g.kind]}`).join("; ")}.`);
+  }
+  const hw: string[] = [];
+  for (const h of due) hw.push(`Uyga vazifa: “${h.title}” — ${fmtTime(h.dueAt)} gacha, ${homeworkState(h.submissions[0]?.status, h.dueAt, now)}.`);
+  for (const h of assigned) hw.push(`Yangi uyga vazifa: “${h.title}” — ${fmtDate(h.dueAt, false)}, ${fmtTime(h.dueAt)} gacha.`);
+  if (submittedToday) hw.push(`Bugun ${submittedToday} ta uyga vazifa topshirildi.`);
+  if (hw.length) lines.push("", ...hw);
+  if (coinsToday) lines.push("", `Kumush tanga: bugun ${fmtSigned(coinsToday)}.`);
 
   const payload = {
     date: ymdTz(now),
