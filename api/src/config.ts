@@ -28,7 +28,7 @@ const schema = z.object({
   CLAUDE_MODEL: z.string().default("claude-opus-5-5"),
   // Gemini kaliti boʻlsa — matnni Gemini yozadi (ikkalasi boʻlsa Gemini birinchi)
   GEMINI_API_KEY: z.string().optional().default(""),
-  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  GEMINI_MODEL: z.string().default("gemini-3.8-flash"),
   TZ_OFFSET: z.string().default("+05:00"), // Asia/Tashkent
   // Oylik to'lov muddati (oyning shu kunigacha). 1-sanada hisob yaratiladi, shu kuni ota-onaga eslatma ketadi.
   PAYMENT_DUE_DAY: z.coerce.number().int().min(1).max(28).default(5),

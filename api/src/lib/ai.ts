@@ -5,6 +5,9 @@ import { config } from "../config.js";
 
 export type AiProvider = "gemini" | "claude" | "none";
 
+/** Vaqtinchalik xatolar: model band, limit, server xatosi, uzilish */
+const RETRYABLE = /(429|500|502|503|504)|aborted|ECONN|fetch failed/i;
+
 export const aiProvider: AiProvider = config.GEMINI_API_KEY ? "gemini" : config.ANTHROPIC_API_KEY ? "claude" : "none";
 
 /** Javob matnidan JSON obyektni ajratib oladi (model qavs ichida izoh yozsa ham ishlaydi). */
@@ -61,12 +64,23 @@ async function claude(system: string, user: string, signal: AbortSignal): Promis
  */
 export async function aiJson<T>(system: string, user: string, timeoutMs = 20_000): Promise<T | null> {
   if (aiProvider === "none") return null;
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    const text = aiProvider === "gemini" ? await gemini(system, user, ctl.signal) : await claude(system, user, ctl.signal);
-    return text.trim() ? parseJson<T>(text) : null;
-  } finally {
-    clearTimeout(timer);
+  // Model band boʻlsa (429/503) yoki vaqtinchalik xato boʻlsa — qayta urinamiz; hisobot kuniga bir marta,
+  // shuning uchun kutish muammo emas. Oxirgi urinish ham xato bersa — chaqiruvchi zaxira matnga oʻtadi.
+  const delays = [0, 3_000, 9_000];
+  let last: unknown;
+  for (const wait of delays) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const text = aiProvider === "gemini" ? await gemini(system, user, ctl.signal) : await claude(system, user, ctl.signal);
+      return text.trim() ? parseJson<T>(text) : null;
+    } catch (e) {
+      last = e;
+      if (!RETRYABLE.test(String(e))) throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  throw last;
 }
