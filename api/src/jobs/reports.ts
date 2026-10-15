@@ -68,7 +68,7 @@ const OPENERS = [
   (n: string) => `${n} bugun darsda boʻldi — maqsadiga yana bir qadam yaqinlashdi.`,
   (n: string) => `${n} bugun ham darsga keldi. Har bir dars — kelajagi uchun qoʻyilgan gʻisht.`,
   (n: string) => `${n} bugun ham darsda boʻldi — bilimiga bilim qoʻshildi.`,
-  (n: string) => `${n} bugun yana bir dars oʻtadi va bilimiga bilim qoʻshdi.`,
+  (n: string) => `${n} bugungi darsda ishtirok etdi. Muntazamlik — eng katta natija.`,
 ];
 
 /** Kunlik xabar matni. Eksport — `report:preview` skripti shu matnni hech narsa yubormasdan koʻrsatadi. */
