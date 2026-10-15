@@ -67,7 +67,7 @@ export async function runDailyParentReports(now = new Date(), log: Log = console
 const OPENERS = [
   (n: string) => `${n} bugun darsda boʻldi — maqsadiga yana bir qadam yaqinlashdi.`,
   (n: string) => `${n} bugun ham darsga keldi. Har bir dars — kelajagi uchun qoʻyilgan gʻisht.`,
-  (n: string) => `${n} bugungi darsni oʻtkazib yubormadi — mehnati bekor ketmaydi.`,
+  (n: string) => `${n} bugun ham darsda boʻldi — bilimiga bilim qoʻshildi.`,
   (n: string) => `${n} bugun yana bir dars oʻtadi va bilimiga bilim qoʻshdi.`,
 ];
 
