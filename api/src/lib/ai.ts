@@ -31,7 +31,7 @@ async function gemini(model: string, system: string, user: string, signal: Abort
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.6, maxOutputTokens: 1200 },
+      generationConfig: { responseMimeType: "application/json", temperature: 0.6, maxOutputTokens: 2000 },
     }),
   });
   if (!res.ok) throw new Error(`Gemini ${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -69,7 +69,7 @@ export async function aiJson<T>(system: string, user: string, timeoutMs = 20_000
   let last: unknown;
   for (const model of models) {
     for (let attempt = 0; attempt < 2; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 2_000));
+      if (attempt) await new Promise((r) => setTimeout(r, 4_000));
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), timeoutMs);
       try {

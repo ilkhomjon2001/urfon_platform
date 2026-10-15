@@ -29,7 +29,7 @@ const schema = z.object({
   // Gemini kaliti boʻlsa — matnni Gemini yozadi (ikkalasi boʻlsa Gemini birinchi)
   GEMINI_API_KEY: z.string().optional().default(""),
   // Vergul bilan: birinchisi band boʻlsa keyingisi ishlatiladi
-  GEMINI_MODEL: z.string().default("gemini-3.5-flash,gemini-3.5-flash-lite,gemini-flash-latest"),
+  GEMINI_MODEL: z.string().default("gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite"),
   TZ_OFFSET: z.string().default("+05:00"), // Asia/Tashkent
   // Oylik to'lov muddati (oyning shu kunigacha). 1-sanada hisob yaratiladi, shu kuni ota-onaga eslatma ketadi.
   PAYMENT_DUE_DAY: z.coerce.number().int().min(1).max(28).default(5),
