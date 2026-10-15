@@ -5,7 +5,7 @@ import { config } from "../config.js";
 
 export type AiProvider = "gemini" | "claude" | "none";
 
-/** Vaqtinchalik xatolar: model band, limit, server xatosi, uzilish */
+/** Vaqtinchalik xatolar: model band, limit, server xatosi, uzilish — keyingi urinish yoki keyingi model */
 const RETRYABLE = /(429|500|502|503|504)|aborted|ECONN|fetch failed/i;
 
 export const aiProvider: AiProvider = config.GEMINI_API_KEY ? "gemini" : config.ANTHROPIC_API_KEY ? "claude" : "none";
@@ -22,8 +22,7 @@ function parseJson<T>(text: string): T | null {
   }
 }
 
-async function gemini(system: string, user: string, signal: AbortSignal): Promise<string> {
-  const model = config.GEMINI_MODEL;
+async function gemini(model: string, system: string, user: string, signal: AbortSignal): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const res = await fetch(url, {
     method: "POST",
@@ -40,13 +39,13 @@ async function gemini(system: string, user: string, signal: AbortSignal): Promis
   return json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
 }
 
-async function claude(system: string, user: string, signal: AbortSignal): Promise<string> {
+async function claude(model: string, system: string, user: string, signal: AbortSignal): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     signal,
     headers: { "content-type": "application/json", "x-api-key": config.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: config.CLAUDE_MODEL,
+      model,
       max_tokens: 1200,
       system,
       messages: [{ role: "user", content: user }],
@@ -64,22 +63,24 @@ async function claude(system: string, user: string, signal: AbortSignal): Promis
  */
 export async function aiJson<T>(system: string, user: string, timeoutMs = 20_000): Promise<T | null> {
   if (aiProvider === "none") return null;
-  // Model band boʻlsa (429/503) yoki vaqtinchalik xato boʻlsa — qayta urinamiz; hisobot kuniga bir marta,
-  // shuning uchun kutish muammo emas. Oxirgi urinish ham xato bersa — chaqiruvchi zaxira matnga oʻtadi.
-  const delays = [0, 3_000, 9_000];
+  // Model zanjiri: birinchisi band boʻlsa (429/503 — bepul limitda tez-tez uchraydi) keyingisiga oʻtamiz.
+  // Har model uchun 2 urinish. Hammasi xato bersa — chaqiruvchi zaxira matnga oʻtadi.
+  const models = (aiProvider === "gemini" ? config.GEMINI_MODEL : config.CLAUDE_MODEL).split(",").map((m) => m.trim()).filter(Boolean);
   let last: unknown;
-  for (const wait of delays) {
-    if (wait) await new Promise((r) => setTimeout(r, wait));
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeoutMs);
-    try {
-      const text = aiProvider === "gemini" ? await gemini(system, user, ctl.signal) : await claude(system, user, ctl.signal);
-      return text.trim() ? parseJson<T>(text) : null;
-    } catch (e) {
-      last = e;
-      if (!RETRYABLE.test(String(e))) throw e;
-    } finally {
-      clearTimeout(timer);
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 2_000));
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), timeoutMs);
+      try {
+        const text = aiProvider === "gemini" ? await gemini(model, system, user, ctl.signal) : await claude(model, system, user, ctl.signal);
+        return text.trim() ? parseJson<T>(text) : null;
+      } catch (e) {
+        last = e;
+        if (!RETRYABLE.test(String(e))) throw e;
+      } finally {
+        clearTimeout(timer);
+      }
     }
   }
   throw last;
