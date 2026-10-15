@@ -34,7 +34,7 @@ async function gemini(model: string, system: string, user: string, signal: Abort
       generationConfig: { responseMimeType: "application/json", temperature: 0.6, maxOutputTokens: 1200 },
     }),
   });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) throw new Error(`Gemini ${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const json = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
   return json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
 }
@@ -51,7 +51,7 @@ async function claude(model: string, system: string, user: string, signal: Abort
       messages: [{ role: "user", content: user }],
     }),
   });
-  if (!res.ok) throw new Error(`Claude ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) throw new Error(`Claude ${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const json = (await res.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
   if (json.stop_reason === "refusal") return "";
   return (json.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
