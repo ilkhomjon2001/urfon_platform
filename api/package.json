@@ -19,6 +19,7 @@
     "credentials:issue": "tsx scripts/issue-credentials.ts",
     "ai:test": "tsx scripts/ai-test.ts",
     "report:preview": "tsx scripts/report-preview.ts",
+    "report:test-send": "tsx scripts/report-test-send.ts",
     "bot:selftest": "tsx scripts/bot-selftest.ts",
     "prisma:generate": "prisma generate"
   },
